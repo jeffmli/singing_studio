@@ -313,27 +313,31 @@
   }
   .lyric-overlay.off .line,
   .lyric-overlay.off .next,
-  .lyric-overlay.off #lyricPrev,
-  .lyric-overlay.off #lyricNext,
-  .lyric-overlay.off .lyric-count {
+  .lyric-overlay.off .lyrics-body {
     display: none;
   }
   .lyric-overlay .line {
     font-family: var(--display); font-size: clamp(18px, 2.4vw, 28px);
     line-height: 1.18; color: #fff3df; text-align: center;
   }
-  .lyric-overlay .next {
-    color: #b6a890; font-size: 13px; text-align: center;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  .lyric-overlay .lyrics-body {
+    max-height: 28vh;
+    overflow: auto;
+    white-space: pre-wrap;
+    color: #f6efe4;
+    font-size: 15px;
+    line-height: 1.55;
   }
-  .lyric-controls {
+  .lyric-actions {
     display: flex; align-items: center; justify-content: center; gap: 8px;
   }
-  .lyric-controls button {
+  .lyric-actions button {
     min-height: 30px; padding: 5px 9px; border-radius: 999px;
     font-size: 12px; background: rgba(255,255,255,0.05);
   }
-  .lyric-controls .lyric-count { color: #8a7e6d; font-size: 12px; min-width: 58px; text-align: center; }
+  .lyric-actions .label {
+    color: #8a7e6d; font-size: 12px;
+  }
   .live-guide {
     display: grid; gap: 12px; margin-top: 14px; margin-bottom: 90px; padding: 0;
     border: 1px solid rgba(245,165,36,0.22); border-radius: var(--radius-sm);
@@ -584,7 +588,9 @@
 
   .analyze-loading { text-align: center; padding: 40px 16px; color: var(--muted-text); }
   .analyze-loading .spin { width: 22px; height: 22px; border-width: 3px; display: block; margin: 0 auto 16px; }
+  .analyze-loading .aly-stage { font-size: 15px; font-weight: 600; color: var(--text); transition: opacity .2s; }
   .analyze-loading .sub { font-size: 13px; margin-top: 8px; color: #8a7e6d; }
+  .analyze-loading .aly-elapsed { font-variant-numeric: tabular-nums; opacity: .8; }
 
   .analyze-summary { display: flex; align-items: center; gap: 24px; margin-bottom: 18px; flex-wrap: wrap; }
   .score-big { font-family: var(--display); font-weight: 600; line-height: 1; }
@@ -778,12 +784,10 @@
             <div id="songFrame"></div>
             <div id="songPlaceholder" class="placeholder"><div><div class="pi">&#9836;</div>Add a YouTube link for this source in Setup.</div></div>
             <div id="lyricOverlay" class="lyric-overlay">
-              <div id="overlayLine" class="line">Paste lyrics in Setup to follow along.</div>
-              <div id="overlayNext" class="next"></div>
-              <div class="lyric-controls">
-                <button type="button" id="lyricPrev">&larr; Line</button>
-                <span id="lyricCount" class="lyric-count">0 / 0</span>
-                <button type="button" id="lyricNext">Line &rarr;</button>
+              <div class="line">Lyrics</div>
+              <div id="overlayBody" class="lyrics-body">Paste lyrics in Setup to follow along.</div>
+              <div class="lyric-actions">
+                <span class="label">Full lyrics only</span>
                 <button type="button" id="lyricToggle">Hide lyrics</button>
               </div>
             </div>
@@ -927,7 +931,6 @@
     playbackRate: 1,
     lyricsOverlay: {
       hidden: false,
-      manualIndex: null,
       raf: 0,
     },
     liveGuide: {
@@ -1230,23 +1233,10 @@
     };
     if (state.step === "song" && !showLyrics) {
       showSongVideo(state.activeTab, videoMap[state.activeTab] || "");
-      startLyricOverlayLoop();
     } else {
       applyVideo("song", "");
-      stopLyricOverlayLoop();
     }
     renderLyricOverlay();
-  }
-
-  function overlayLineIndex(lines) {
-    if (!lines.length) return -1;
-    if (state.lyricsOverlay.manualIndex != null) {
-      return Math.max(0, Math.min(lines.length - 1, state.lyricsOverlay.manualIndex));
-    }
-    const duration = getSongDuration();
-    if (!duration) return 0;
-    const progress = Math.max(0, Math.min(0.999, currentSongTime() / duration));
-    return Math.max(0, Math.min(lines.length - 1, Math.floor(progress * lines.length)));
   }
 
   function renderLyricOverlay() {
@@ -1258,42 +1248,11 @@
     $("lyricToggle").textContent = state.lyricsOverlay.hidden ? "Show lyrics" : "Hide lyrics";
 
     if (!lines.length) {
-      $("overlayLine").textContent = "Paste lyrics in Setup to follow along.";
-      $("overlayNext").textContent = "";
-      $("lyricCount").textContent = "0 / 0";
-      $("lyricPrev").disabled = true;
-      $("lyricNext").disabled = true;
+      $("overlayBody").textContent = "Paste lyrics in Setup to follow along.";
       return;
     }
 
-    const idx = overlayLineIndex(lines);
-    $("overlayLine").textContent = lines[idx] || "";
-    $("overlayNext").textContent = lines[idx + 1] ? `Next: ${lines[idx + 1]}` : "";
-    $("lyricCount").textContent = `${idx + 1} / ${lines.length}`;
-    $("lyricPrev").disabled = idx <= 0;
-    $("lyricNext").disabled = idx >= lines.length - 1;
-  }
-
-  function startLyricOverlayLoop() {
-    if (state.lyricsOverlay.raf) return;
-    const tick = () => {
-      renderLyricOverlay();
-      state.lyricsOverlay.raf = requestAnimationFrame(tick);
-    };
-    state.lyricsOverlay.raf = requestAnimationFrame(tick);
-  }
-
-  function stopLyricOverlayLoop() {
-    if (state.lyricsOverlay.raf) cancelAnimationFrame(state.lyricsOverlay.raf);
-    state.lyricsOverlay.raf = 0;
-  }
-
-  function nudgeLyric(delta) {
-    const lines = lyricLines();
-    if (!lines.length) return;
-    const current = overlayLineIndex(lines);
-    state.lyricsOverlay.manualIndex = Math.max(0, Math.min(lines.length - 1, current + delta));
-    renderLyricOverlay();
+    $("overlayBody").textContent = lines.join("\n");
   }
 
   function render() {
@@ -1418,7 +1377,7 @@
       body.innerHTML = `<div class="analyze-error">Add the song's <b>Original</b> YouTube link in Setup so we can build the reference melody, then try again.</div>`;
       return;
     }
-    body.innerHTML = `<div class="analyze-loading"><span class="spin"></span>Analyzing your pitch&hellip;<div class="sub">Isolating the original vocal and comparing note-by-note. The first time for a song can take ~30&ndash;60s.</div></div>`;
+    const stopProgress = startAnalyzeProgress(body);
     try {
       const res = await fetch(
         `/api/analyze?videoUrl=${encodeURIComponent(videoUrl)}&title=${encodeURIComponent(take.title || "")}`,
@@ -1429,7 +1388,37 @@
       renderAnalysis(data);
     } catch (err) {
       body.innerHTML = `<div class="analyze-error">${escapeHtml(err.message)}</div>`;
+    } finally {
+      stopProgress();
     }
+  }
+
+  // Staged, ticking loader so a long Demucs/pyin run never looks hung.
+  // It's a heuristic timeline (we get no real progress from the blocking call);
+  // the always-advancing elapsed counter is the honest "still working" signal.
+  function startAnalyzeProgress(body) {
+    const stages = [
+      "Isolating the original vocal…",
+      "Detecting your pitch, note-by-note…",
+      "Aligning your take to the song…",
+      "Scoring your intonation…",
+    ];
+    body.innerHTML = `<div class="analyze-loading"><span class="spin"></span>` +
+      `<div class="aly-stage">${stages[0]}</div>` +
+      `<div class="sub">First time for a song builds the reference melody and can take a minute. ` +
+      `<span class="aly-elapsed">0s elapsed</span></div></div>`;
+    const stageEl = body.querySelector(".aly-stage");
+    const elapsedEl = body.querySelector(".aly-elapsed");
+    const t0 = Date.now();
+    let shown = 0;
+    const tick = setInterval(() => {
+      const s = Math.round((Date.now() - t0) / 1000);
+      if (elapsedEl) elapsedEl.textContent = `${s}s elapsed`;
+      // Advance a stage roughly every 7s, but hold on the last until done.
+      const target = Math.min(stages.length - 1, Math.floor(s / 7));
+      if (target !== shown && stageEl) { shown = target; stageEl.textContent = stages[shown]; }
+    }, 250);
+    return () => clearInterval(tick);
   }
 
   function renderAnalysis(data) {
@@ -1639,7 +1628,6 @@
     state.liveGuide.fallbackSongTime = songTime;
     state.liveGuide.startedAt = Date.now();
     state.liveGuide.history = [];
-    state.lyricsOverlay.manualIndex = null;
     renderLyricOverlay();
     drawLivePitchChart();
     setGuideStatus(state.liveGuide.running
@@ -2173,8 +2161,6 @@
         setGuideStatus(`Playback pace set to ${Math.round(state.playbackRate * 100)}%.`);
       });
     }
-    $("lyricPrev").addEventListener("click", () => nudgeLyric(-1));
-    $("lyricNext").addEventListener("click", () => nudgeLyric(1));
     $("lyricToggle").addEventListener("click", () => {
       state.lyricsOverlay.hidden = !state.lyricsOverlay.hidden;
       renderLyricOverlay();
@@ -2202,7 +2188,6 @@
     });
     for (const id of fields) {
       $(id).addEventListener("input", () => {
-        if (id === "lyricsInput") state.lyricsOverlay.manualIndex = null;
         render();
       });
     }

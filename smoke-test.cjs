@@ -167,11 +167,9 @@ async function main() {
   check("live pitch guide is collapsed by default", await page.isVisible(".live-guide summary") && !(await page.isVisible("#prepareGuide")));
   check("playback pace controls visible", await page.isVisible("#pacePills"));
   check("lyric overlay visible", await page.isVisible("#lyricOverlay"));
-  check("lyric overlay shows first lyric", (await page.textContent("#overlayLine")).includes("la la la"));
+  check("lyric overlay shows full lyrics", (await page.textContent("#overlayBody")).includes("la la la") && (await page.textContent("#overlayBody")).includes("second line"));
   await page.click('[data-rate="0.75"]');
   check("75 percent pace selected", await page.evaluate(() => document.querySelector('[data-rate="0.75"]').classList.contains("active")));
-  await page.click("#lyricNext");
-  check("lyric overlay can nudge forward", (await page.textContent("#overlayLine")).includes("second line"));
   await page.click("#lyricToggle");
   check("lyric overlay collapses", await page.evaluate(() => document.getElementById("lyricOverlay").classList.contains("off")));
   await page.click("#lyricToggle");
