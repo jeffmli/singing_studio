@@ -41,5 +41,33 @@ def main():
     print("PASS ✓")
 
 
+def test_play_original_scores_high():
+    """Playing the original mix back should score high: the take is vocal-isolated
+    (isolate=True) so it's compared in the same domain as the vocal-stem reference.
+
+    Skipped unless the spike's vocal stem + matching full mix are present, since it
+    needs Demucs. STEM must be the separated vocals of MIX.
+    """
+    import os
+    STEM = "/tmp/spike/vocals.wav"
+    MIX = os.path.join(os.path.dirname(__file__), "..", "pitch-spike", "clip.wav")
+    if not (os.path.exists(STEM) and os.path.exists(MIX)):
+        print("skip play_original (audio fixtures missing)")
+        return
+
+    rt, rf = analysis.detect_pitch(STEM)
+    ref = {
+        "videoId": "fixture",
+        "times": [float(t) for t in rt],
+        "f0": [None if np.isnan(v) else float(v) for v in rf],
+        "midi": [None if np.isnan(v) else float(v) for v in analysis._hz_to_midi(rf, np)],
+    }
+    ut, uf = analysis.detect_pitch(MIX, isolate=True)  # Demucs the mix take
+    res = analysis.align_and_score(ut, uf, ref)
+    print(f"play-original score: {res['score']}%  (median {res['medianCents']}c)")
+    assert res["score"] >= 80, "playing the original should score high"
+
+
 if __name__ == "__main__":
     main()
+    test_play_original_scores_high()

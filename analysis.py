@@ -18,7 +18,9 @@ import tempfile
 ANALYSIS_SR = 22050
 FMIN_NOTE = "C2"
 FMAX_NOTE = "C6"
-IN_TUNE_CENTS = 35          # within this many cents counts as "in tune"
+IN_TUNE_CENTS = 35          # within this many cents = full credit ("in tune")
+TOLERANCE_MARGIN_CENTS = 15  # soft band past the core: partial credit, not zero
+CONF_THRESHOLD = 0.5        # drop pyin frames below this voiced probability
 CACHE_DIR = os.path.expanduser("~/Library/Application Support/Singing Studio/refcache")
 
 
@@ -39,23 +41,42 @@ def _load_mono(path, sr=ANALYSIS_SR):
     return y
 
 
-def detect_pitch(path):
-    """Return (times, f0) for an audio file (NaN where unvoiced)."""
+def _gate_confidence(f0, voiced_prob, np):
+    """Blank out frames pyin isn't confident about, so shaky reads don't score."""
+    out = np.array(f0, dtype=float)
+    out[np.asarray(voiced_prob) < CONF_THRESHOLD] = np.nan
+    return out
+
+
+def _pitch_contour(y):
+    """Return (times, f0) for mono audio @ ANALYSIS_SR (NaN where unvoiced/low-conf)."""
     import librosa
     import numpy as np
-    y = _load_mono(path)
     if y.size < ANALYSIS_SR // 2:
         raise ValueError("Recording is too short to analyze.")
     if float(np.max(np.abs(y))) < 1e-3:
         raise ValueError("Recording is too quiet to analyze.")
-    f0, _, _ = librosa.pyin(
+    f0, _, voiced_prob = librosa.pyin(
         y, sr=ANALYSIS_SR,
         fmin=librosa.note_to_hz(FMIN_NOTE),
         fmax=librosa.note_to_hz(FMAX_NOTE),
         frame_length=2048,
     )
+    f0 = _gate_confidence(f0, voiced_prob, np)
     times = librosa.times_like(f0, sr=ANALYSIS_SR)
     return times, f0
+
+
+def detect_pitch(path, isolate=False):
+    """Return (times, f0) for an audio file.
+
+    isolate=True runs Demucs vocal separation first, so the take is scored in the
+    same vocal-only domain as the cached reference. Without it, pyin locks onto
+    whatever instrument is loudest — playing an original mix back scores near zero
+    even though every note is "right".
+    """
+    y = _separate_vocals(path) if isolate else _load_mono(path)
+    return _pitch_contour(y)
 
 
 def _separate_vocals(path):
@@ -113,12 +134,13 @@ def build_reference(video_url, force=False):
 
     audio = _download_audio(video_url)
     vocals = _separate_vocals(audio)
-    f0, _, _ = librosa.pyin(
+    f0, _, voiced_prob = librosa.pyin(
         vocals, sr=ANALYSIS_SR,
         fmin=librosa.note_to_hz(FMIN_NOTE),
         fmax=librosa.note_to_hz(FMAX_NOTE),
         frame_length=2048,
     )
+    f0 = _gate_confidence(f0, voiced_prob, np)
     times = librosa.times_like(f0, sr=ANALYSIS_SR)
     midi = _hz_to_midi(f0, np)
     ref = {
@@ -150,6 +172,25 @@ def _interp_nan(arr, np):
     return a
 
 
+def _fold_cents(cents, np):
+    """Fold a cents error onto the nearest octave -> range (-600, 600].
+
+    A whole-octave detection slip (common with pyin) shows up as ~±1200c and
+    would otherwise zero a note the singer actually nailed. Folding removes that
+    artifact while leaving real, sub-octave errors untouched.
+    """
+    c = np.asarray(cents, dtype=float)
+    return c - 1200.0 * np.round(c / 1200.0)
+
+
+def _frame_credit(abs_cents, np):
+    """Per-frame score in [0,1]: full credit within the core, then a linear
+    ramp down across the margin band so notes just outside the core aren't
+    punished as harshly as wildly wrong ones."""
+    edge = IN_TUNE_CENTS + TOLERANCE_MARGIN_CENTS
+    return np.clip((edge - np.asarray(abs_cents, dtype=float)) / TOLERANCE_MARGIN_CENTS, 0.0, 1.0)
+
+
 # ---------- alignment + scoring ----------
 def align_and_score(user_times, user_f0, ref):
     """Subsequence-DTW align the user take to the reference, score in cents."""
@@ -176,20 +217,22 @@ def align_and_score(user_times, user_f0, ref):
     )
     wp = wp[::-1]  # ascending order: pairs of (user_idx, ref_idx)
 
-    times, u_out, r_out, cents = [], [], [], []
+    times, u_out, r_out, cents_raw = [], [], [], []
     for ui, ri in wp:
         if user_voiced[ui] and ref_voiced[ri]:
-            c = (user_midi[ui] - ref_midi[ri]) * 100.0
             times.append(float(user_times[ui]))
             u_out.append(round(float(user_midi[ui]), 3))
             r_out.append(round(float(ref_midi[ri]), 3))
-            cents.append(round(float(c), 1))
+            cents_raw.append((user_midi[ui] - ref_midi[ri]) * 100.0)
 
-    if not cents:
+    if not cents_raw:
         raise ValueError("Couldn't line up the take with the song.")
 
-    cents_arr = np.array(cents)
+    # Fold octave slips out before scoring, then give graded (margin) credit.
+    cents_arr = _fold_cents(np.array(cents_raw), np)
+    cents = [round(float(c), 1) for c in cents_arr]
     abs_cents = np.abs(cents_arr)
+    score_pct = float(np.mean(_frame_credit(abs_cents, np)) * 100)
     in_tune_pct = float(np.mean(abs_cents <= IN_TUNE_CENTS) * 100)
     median_cents = float(np.median(abs_cents))
     mean_signed = float(np.mean(cents_arr))
@@ -198,7 +241,7 @@ def align_and_score(user_times, user_f0, ref):
     # Downsample arrays for the graph.
     step = max(1, len(times) // 600)
     return {
-        "score": round(in_tune_pct),
+        "score": round(score_pct),
         "inTunePct": round(in_tune_pct, 1),
         "inTuneCents": IN_TUNE_CENTS,
         "medianCents": round(median_cents),
@@ -227,5 +270,5 @@ def _tendency(mean_signed):
 def analyze(take_path, video_url):
     """Full analysis for one take. Returns the scoring result dict."""
     ref = build_reference(video_url)
-    user_times, user_f0 = detect_pitch(take_path)
+    user_times, user_f0 = detect_pitch(take_path, isolate=True)
     return align_and_score(user_times, user_f0, ref)
