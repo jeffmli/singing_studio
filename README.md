@@ -12,7 +12,9 @@ It runs entirely on your own machine. No accounts, no cloud, no API keys.
 
 - **Search a song by name** — auto-finds the original, instrumental/karaoke, and
   lyric videos on YouTube (via `yt-dlp`, no API key) plus the lyrics, and
-  auto-fills your session. Review and tweak before you start.
+  auto-fills your session. Manual fields stay tucked away until you need them.
+- **Self-healing videos** — if a video refuses to embed ("Video unavailable"),
+  the app automatically finds and swaps in another that plays.
 - **Three-stage flow** — one focused screen at a time: Setup → Warmups → Sing.
 - **Step through warmups** with embedded YouTube exercises.
 - **Sing** with the original, instrumental, lyric video, or on-screen lyrics.

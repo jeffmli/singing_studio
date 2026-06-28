@@ -210,6 +210,20 @@
   }
   .field.flash input, .field.flash textarea { animation: fieldFlash 1.2s ease; border-color: var(--amber); }
 
+  /* Collapsible manual section */
+  .manual-toggle {
+    width: 100%; display: flex; align-items: center; justify-content: space-between;
+    background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-text);
+    font-weight: 600; min-height: 44px;
+  }
+  .manual-toggle:hover { color: var(--ink); border-color: var(--line-strong); background: rgba(255,255,255,0.03); }
+  .manual-toggle .chev { color: var(--amber); transition: transform 240ms ease; font-size: 13px; }
+  .manual-setup.open .manual-toggle .chev { transform: rotate(90deg); }
+  .manual-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 320ms cubic-bezier(0.22,1,0.36,1); }
+  .manual-setup.open .manual-body { grid-template-rows: 1fr; }
+  .manual-inner { overflow: hidden; min-height: 0; }
+  .manual-inner .setup-grid { padding-top: 22px; }
+
   .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
   .setup-section h3 {
     font-family: var(--display); font-weight: 600; font-size: 19px; margin-bottom: 4px;
@@ -522,6 +536,12 @@
           </div>
           <p id="searchStatus" class="search-status muted">Type a song and we'll find the videos and lyrics for you.</p>
         </div>
+        <div class="manual-setup" id="manualSetup">
+        <button type="button" class="manual-toggle" id="manualToggle" aria-expanded="false">
+          <span>Enter or edit details manually</span>
+          <span class="chev">&#9656;</span>
+        </button>
+        <div class="manual-body"><div class="manual-inner">
         <div class="setup-grid">
           <div class="setup-section">
             <h3>The Song</h3>
@@ -556,6 +576,8 @@
             </div>
           </div>
         </div>
+        </div></div>
+        </div>
         <div class="setup-actions">
           <button id="saveSetup" class="ghost">Save</button>
           <button id="startSession" class="primary">Start Session &rarr;</button>
@@ -574,7 +596,7 @@
         <div class="warmup-dots" id="warmupDots"></div>
         <div class="player-shell">
           <div class="player-frame">
-            <iframe id="warmupFrame" title="Warmup YouTube player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            <div id="warmupFrame"></div>
             <div id="warmupPlaceholder" class="placeholder"><div><div class="pi">&#9835;</div>Add warmup videos in Setup, then press Start Session.</div></div>
           </div>
         </div>
@@ -601,7 +623,7 @@
         </div>
         <div class="player-shell">
           <div id="videoPane" class="player-frame">
-            <iframe id="songFrame" title="Song YouTube player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            <div id="songFrame"></div>
             <div id="songPlaceholder" class="placeholder"><div><div class="pi">&#9836;</div>Add a YouTube link for this source in Setup.</div></div>
           </div>
           <div id="lyricsPane" class="lyrics-view hidden"></div>
@@ -682,6 +704,7 @@
   <!-- Toast -->
   <div class="toast" id="toast"></div>
 
+<script src="https://www.youtube.com/iframe_api"></script>
 <script>
 (() => {
   const setupKey = "singing-practice-setup-v1";
@@ -702,6 +725,8 @@
     sessionId: null,
     sessionStartedAt: 0,
     reflectRating: 0,
+    currentSongKind: "original",
+    triedVideos: { original: new Set(), instrumental: new Set(), lyricVideo: new Set() },
   };
 
   const $ = (id) => document.getElementById(id);
@@ -723,10 +748,102 @@
     }
   }
 
-  function embedUrl(value) {
-    const id = parseYouTubeId(value);
-    return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : "";
+  // ---------- YouTube IFrame players (with embed-error fallback) ----------
+  const players = { warmup: null, song: null };
+  const playerState = {
+    warmup: { ready: false, currentId: null, wantId: undefined },
+    song: { ready: false, currentId: null, wantId: undefined },
+  };
+  const SONG_KINDS = ["original", "instrumental", "lyricVideo"];
+  const KIND_FIELD = { original: "originalUrl", instrumental: "instrumentalUrl", lyricVideo: "lyricVideoUrl" };
+
+  function makePlayer(which, onError) {
+    return new YT.Player(which === "warmup" ? "warmupFrame" : "songFrame", {
+      playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
+      events: {
+        onReady: () => {
+          playerState[which].ready = true;
+          if (playerState[which].wantId !== undefined) applyVideo(which, playerState[which].wantId);
+        },
+        onError,
+      },
+    });
   }
+
+  function initPlayers() {
+    if (!window.YT || !window.YT.Player || players.song) return;
+    players.warmup = makePlayer("warmup", onWarmupError);
+    players.song = makePlayer("song", onSongError);
+  }
+
+  function applyVideo(which, videoId) {
+    const ps = playerState[which];
+    const player = players[which];
+    if (!player || !ps.ready) { ps.wantId = videoId; return; }
+    if (!videoId) {
+      if (ps.currentId) { try { player.stopVideo(); } catch (e) {} }
+      ps.currentId = null;
+      return;
+    }
+    if (ps.currentId === videoId) return;
+    ps.currentId = videoId;
+    try { player.cueVideoById(videoId); } catch (e) {}
+  }
+
+  function showWarmupVideo(url) {
+    const id = parseYouTubeId(url);
+    $("warmupPlaceholder").classList.toggle("hidden", Boolean(id));
+    applyVideo("warmup", id || "");
+  }
+
+  function showSongVideo(kind, url) {
+    const id = parseYouTubeId(url);
+    $("songPlaceholder").classList.toggle("hidden", Boolean(id));
+    state.currentSongKind = kind;
+    if (id && state.triedVideos[kind]) state.triedVideos[kind].add(id);
+    applyVideo("song", id || "");
+  }
+
+  function showSongPlaceholder(message) {
+    const ph = $("songPlaceholder");
+    ph.querySelector("div").innerHTML = `<div class="pi">&#9888;</div>${escapeHtml(message)}`;
+    ph.classList.remove("hidden");
+    applyVideo("song", "");
+  }
+
+  function onWarmupError() {
+    $("warmupStatus").textContent = "This warmup video can't be embedded — try Next, or open it on YouTube.";
+  }
+
+  async function onSongError(event) {
+    const kind = state.currentSongKind;
+    if (!SONG_KINDS.includes(kind)) return;
+    if (playerState.song.currentId) state.triedVideos[kind].add(playerState.song.currentId);
+
+    const title = getSetup().songTitle;
+    if (!title) { showSongPlaceholder("This video can't be embedded. Paste another link in Setup."); return; }
+
+    showToast("That video couldn't be embedded — finding another…");
+    try {
+      const exclude = Array.from(state.triedVideos[kind]).join(",");
+      const res = await fetch(`/api/alt?q=${encodeURIComponent(title)}&kind=${kind}&exclude=${encodeURIComponent(exclude)}`);
+      const data = await res.json();
+      const alt = data && data.result;
+      if (alt && alt.url) {
+        $(KIND_FIELD[kind]).value = alt.url;
+        localStorage.setItem(setupKey, JSON.stringify(getSetup()));
+        playerState.song.currentId = null; // force reload even if ids coincide
+        showSongVideo(kind, alt.url);
+        showToast("Switched to another video that plays ✓");
+      } else {
+        showSongPlaceholder("Couldn't find an embeddable video — paste one in Setup.");
+      }
+    } catch (e) {
+      showSongPlaceholder("Couldn't fetch an alternate video — paste one in Setup.");
+    }
+  }
+
+  window.onYouTubeIframeAPIReady = initPlayers;
 
   function getSetup() {
     return {
@@ -799,17 +916,6 @@
     $("recordingStatus").textContent = message;
   }
 
-  function setFrame(frame, placeholder, url) {
-    const src = embedUrl(url);
-    if (frame.src !== src) frame.src = src;
-    placeholder.classList.toggle("hidden", Boolean(src));
-  }
-
-  function clearFrame(frame, placeholder) {
-    if (frame.src) frame.src = "";
-    if (placeholder) placeholder.classList.remove("hidden");
-  }
-
   function renderStages() {
     const map = { setup: "stageSetup", warmups: "stageWarmups", song: "stageSong" };
     for (const [key, id] of Object.entries(map)) {
@@ -845,9 +951,9 @@
     }
 
     if (state.step === "warmups") {
-      setFrame($("warmupFrame"), $("warmupPlaceholder"), setup.warmups[state.warmupIndex] || "");
+      showWarmupVideo(setup.warmups[state.warmupIndex] || "");
     } else {
-      clearFrame($("warmupFrame"), $("warmupPlaceholder"));
+      applyVideo("warmup", "");
     }
     $("prevWarmup").disabled = state.warmupIndex <= 0;
     $("nextWarmup").disabled = state.warmupIndex >= total - 1;
@@ -870,9 +976,9 @@
       lyricVideo: setup.lyricVideoUrl,
     };
     if (state.step === "song" && !showLyrics) {
-      setFrame($("songFrame"), $("songPlaceholder"), videoMap[state.activeTab] || "");
+      showSongVideo(state.activeTab, videoMap[state.activeTab] || "");
     } else {
-      clearFrame($("songFrame"), $("songPlaceholder"));
+      applyVideo("song", "");
     }
   }
 
@@ -1229,6 +1335,11 @@
     if (value) flashField(el);
   }
 
+  function setManualOpen(open) {
+    $("manualSetup").classList.toggle("open", open);
+    $("manualToggle").setAttribute("aria-expanded", String(open));
+  }
+
   async function runSearch() {
     const q = $("songSearch").value.trim();
     const status = $("searchStatus");
@@ -1263,6 +1374,7 @@
         ? `Filled “${name}”. Couldn’t find: ${missing.join(", ")} — add those manually if you like. Review below, then Start Session.`
         : `Filled “${name}” — review and tweak below, then Start Session.`;
 
+      setManualOpen(true); // reveal fields so the user can review the auto-fill
       render(); // persists the filled setup
     } catch (err) {
       status.className = "search-status error";
@@ -1276,6 +1388,9 @@
     $("searchBtn").addEventListener("click", runSearch);
     $("songSearch").addEventListener("keydown", (event) => {
       if (event.key === "Enter") { event.preventDefault(); runSearch(); }
+    });
+    $("manualToggle").addEventListener("click", () => {
+      setManualOpen(!$("manualSetup").classList.contains("open"));
     });
     $("saveSetup").addEventListener("click", saveSetup);
     $("startSession").addEventListener("click", () => {
@@ -1339,9 +1454,13 @@
   ensureSession();
   bindEvents();
   render();
+  initPlayers(); // in case the YT API loaded before this script ran
   renderTakes().catch((error) => {
     $("takesList").innerHTML = `<p class="empty-takes">Could not load takes: ${escapeHtml(error.message)}</p>`;
   });
+
+  // Test hook: lets the smoke test simulate an un-embeddable video.
+  window.__studioTest = { forceSongError: () => onSongError({ data: 150 }) };
 })();
 </script>
 </body>

@@ -31,32 +31,55 @@ NOISE_WORDS = re.compile(
 CHANNEL_NOISE = re.compile(r"(?i)\b(vevo|official|topic|music|records?|tv)\b")
 
 
-def yt_search(query):
-    """Return the top YouTube result for a query, or None."""
+def yt_search_many(query, count=1):
+    """Return up to `count` YouTube results for a query (list of dicts)."""
     try:
         proc = subprocess.run(
-            ["yt-dlp", "--flat-playlist", "-J", "--no-warnings", f"ytsearch1:{query}"],
+            ["yt-dlp", "--flat-playlist", "-J", "--no-warnings", f"ytsearch{count}:{query}"],
             capture_output=True,
             text=True,
             timeout=YT_TIMEOUT,
         )
         if proc.returncode != 0 or not proc.stdout:
-            return None
+            return []
         entries = (json.loads(proc.stdout) or {}).get("entries") or []
-        if not entries:
-            return None
-        entry = entries[0]
-        vid = entry.get("id")
-        if not vid:
-            return None
-        return {
-            "id": vid,
-            "url": f"https://www.youtube.com/watch?v={vid}",
-            "title": entry.get("title") or "",
-            "channel": entry.get("channel") or entry.get("uploader") or "",
-        }
+        results = []
+        for entry in entries:
+            vid = entry.get("id")
+            if not vid:
+                continue
+            results.append({
+                "id": vid,
+                "url": f"https://www.youtube.com/watch?v={vid}",
+                "title": entry.get("title") or "",
+                "channel": entry.get("channel") or entry.get("uploader") or "",
+            })
+        return results
     except Exception:
-        return None
+        return []
+
+
+def yt_search(query):
+    """Return the top YouTube result for a query, or None."""
+    results = yt_search_many(query, 1)
+    return results[0] if results else None
+
+
+# Search query templates per song slot (used by /api/search and /api/alt).
+KIND_QUERY = {
+    "original": "{q} official audio",
+    "instrumental": "{q} instrumental karaoke",
+    "lyricVideo": "{q} lyrics",
+}
+
+
+def do_alt(query, kind, exclude):
+    """Return the next candidate video for a slot, skipping excluded ids."""
+    template = KIND_QUERY.get(kind, "{q}")
+    for result in yt_search_many(template.format(q=query), 8):
+        if result["id"] not in exclude:
+            return result
+    return None
 
 
 def split_artist_title(title, channel):
@@ -180,6 +203,17 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({"error": "missing q"}, 400)
             try:
                 return self._json(do_search(query))
+            except Exception as exc:  # noqa: BLE001
+                return self._json({"error": str(exc)}, 500)
+        if parsed.path == "/api/alt":
+            params = urllib.parse.parse_qs(parsed.query)
+            query = (params.get("q") or [""])[0].strip()
+            kind = (params.get("kind") or [""])[0].strip()
+            exclude = set(filter(None, (params.get("exclude") or [""])[0].split(",")))
+            if not query or kind not in KIND_QUERY:
+                return self._json({"error": "missing or invalid q/kind"}, 400)
+            try:
+                return self._json({"result": do_alt(query, kind, exclude)})
             except Exception as exc:  # noqa: BLE001
                 return self._json({"error": str(exc)}, 500)
         return super().do_GET()

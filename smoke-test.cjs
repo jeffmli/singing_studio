@@ -52,8 +52,15 @@ async function main() {
   await context.route("**/api/search**", (route) =>
     route.fulfill({ contentType: "application/json", body: JSON.stringify(MOCK_SEARCH) })
   );
-  // Don't actually load YouTube iframes.
-  await context.route(/youtube\.com\/embed/, (route) => route.abort());
+  // Mock the embed-fallback endpoint with a known replacement video.
+  await context.route("**/api/alt**", (route) =>
+    route.fulfill({
+      contentType: "application/json",
+      body: JSON.stringify({ result: { id: "zzzzzzzzzzz", url: "https://www.youtube.com/watch?v=zzzzzzzzzzz", title: "fallback take" } }),
+    })
+  );
+  // Don't actually load YouTube (iframes or the player API).
+  await context.route(/youtube\.com/, (route) => route.abort());
 
   const page = await context.newPage();
   const pageErrors = [];
@@ -87,6 +94,7 @@ async function main() {
   check("page title is correct", (await page.title()) === "Singing Practice Studio");
   check("setup stage is active on load", await page.isVisible("#stageSetup.active"));
   check("search bar present", await page.isVisible("#songSearch"));
+  check("manual fields collapsed by default", !(await page.evaluate(() => document.getElementById("manualSetup").classList.contains("open"))));
 
   // --- Search auto-fill ---
   console.log("Search auto-fill");
@@ -98,6 +106,14 @@ async function main() {
   check("instrumental url filled", (await page.inputValue("#instrumentalUrl")).includes("bbbbbbbbbbb"));
   check("lyric video url filled", (await page.inputValue("#lyricVideoUrl")).includes("ccccccccccc"));
   check("lyrics filled", (await page.inputValue("#lyricsInput")).includes("la la la"));
+  check("manual fields auto-expand after search", await page.evaluate(() => document.getElementById("manualSetup").classList.contains("open")));
+
+  // --- Manual section toggle ---
+  console.log("Manual section toggle");
+  await page.click("#manualToggle");
+  check("manual section collapses on toggle", await waitTrue(() => !document.getElementById("manualSetup").classList.contains("open")));
+  await page.click("#manualToggle");
+  check("manual section expands on toggle", await waitTrue(() => document.getElementById("manualSetup").classList.contains("open")));
 
   // --- Save setup ---
   console.log("Save Setup");
@@ -129,6 +145,15 @@ async function main() {
   check("video pane hidden on Lyrics tab", !(await page.isVisible("#videoPane")));
   await page.click('[data-tab="original"]');
   check("video pane shows on Original tab", await page.isVisible("#videoPane"));
+
+  // --- Video embed fallback ---
+  console.log("Video embed fallback");
+  await page.click('[data-tab="instrumental"]');
+  await page.waitForTimeout(150);
+  await page.evaluate(() => window.__studioTest.forceSongError());
+  check("instrumental swaps to a working video after embed error",
+    await waitTrue(() => document.getElementById("instrumentalUrl").value.includes("zzzzzzzzzzz")));
+  await page.click('[data-tab="original"]');
 
   // --- Stepper navigation ---
   console.log("Stepper navigation");
