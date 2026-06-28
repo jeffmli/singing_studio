@@ -6,7 +6,7 @@ videos and lyrics for you, then walks you through a focused practice session:
 
 It runs entirely on your own machine. No accounts, no cloud, no API keys.
 
-![stage](https://img.shields.io/badge/runs-locally-0f766e) ![tests](https://img.shields.io/badge/smoke%20tests-47%20passing-f5a524)
+![stage](https://img.shields.io/badge/runs-locally-0f766e) ![tests](https://img.shields.io/badge/smoke%20tests-59%20passing-f5a524)
 
 ## Features
 
@@ -20,10 +20,14 @@ It runs entirely on your own machine. No accounts, no cloud, no API keys.
 - **Sing** with the original, instrumental, lyric video, or on-screen lyrics.
 - **Phrase + tempo drill tracking** — label takes as Slow / Medium / Normal and
   keep the exact phrase focus attached to each recording.
+- **Playback pace + lyric overlay** — slow the YouTube player down for phrase
+  practice and follow lyrics directly over the video, with manual line nudges.
 - **Record your takes** straight from the browser mic, with a live input meter.
 - **Analyze pitch** — optional local pitch scoring compares a take to the
   original melody and shows a green/red intonation graph when the analysis
   dependencies are installed.
+- **Live pitch guide** — prepare the song's melody once, then see immediate
+  sharp / flat / on-target feedback from the microphone while the video plays.
 - **Finish & reflect** — rate the session and jot what went well / what to work
   on next time.
 - **Practice history** — every saved session, with its takes, ratings, and notes.
@@ -71,8 +75,8 @@ it manually if it picks the wrong track.
 
 A Playwright smoke test drives the real app and checks every button — search
 auto-fill, save setup, start session, warmup nav, stepper, source tabs,
-record/stop (with a fake mic), phrase/tempo take labels, mocked pitch analysis,
-takes drawer, finish & reflect, and history.
+record/stop (with a fake mic), phrase/tempo take labels, playback pace, lyric overlay, live pitch guide,
+mocked pitch analysis, takes drawer, finish & reflect, and history.
 
 ```bash
 npm install      # first time

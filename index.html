@@ -290,7 +290,7 @@
   }
   .practice-plan h3 { font-family: var(--display); font-weight: 600; font-size: 18px; }
   .practice-plan .plan-fields {
-    display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 12px;
+    display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 12px;
     align-items: end;
   }
   .tempo-pills { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -301,6 +301,79 @@
   .tempo-pills button.active {
     color: #2a1903; background: var(--amber); border-color: var(--amber);
   }
+  .pace-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .pace-pills button {
+    min-height: 36px; padding: 7px 12px; border-radius: 999px;
+    color: #9b8e7c; background: rgba(255,255,255,0.03);
+  }
+  .pace-pills button.active {
+    color: #2a1903; background: var(--amber); border-color: var(--amber);
+  }
+  .lyric-overlay {
+    position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 4;
+    display: grid; gap: 7px; padding: 12px 14px;
+    border: 1px solid rgba(255,255,255,0.14); border-radius: var(--radius-sm);
+    background: linear-gradient(180deg, rgba(10,8,7,0.78), rgba(10,8,7,0.92));
+    box-shadow: 0 12px 30px rgba(0,0,0,0.45);
+    backdrop-filter: blur(10px);
+  }
+  .lyric-overlay.off {
+    left: auto; right: 14px; width: auto; padding: 8px;
+  }
+  .lyric-overlay.off .line,
+  .lyric-overlay.off .next,
+  .lyric-overlay.off #lyricPrev,
+  .lyric-overlay.off #lyricNext,
+  .lyric-overlay.off .lyric-count {
+    display: none;
+  }
+  .lyric-overlay .line {
+    font-family: var(--display); font-size: clamp(18px, 2.4vw, 28px);
+    line-height: 1.18; color: #fff3df; text-align: center;
+  }
+  .lyric-overlay .next {
+    color: #b6a890; font-size: 13px; text-align: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .lyric-controls {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .lyric-controls button {
+    min-height: 30px; padding: 5px 9px; border-radius: 999px;
+    font-size: 12px; background: rgba(255,255,255,0.05);
+  }
+  .lyric-controls .lyric-count { color: #8a7e6d; font-size: 12px; min-width: 58px; text-align: center; }
+  .live-guide {
+    display: grid; gap: 12px; margin-bottom: 18px; padding: 14px;
+    border: 1px solid rgba(245,165,36,0.22); border-radius: var(--radius-sm);
+    background: linear-gradient(180deg, rgba(245,165,36,0.08), rgba(0,0,0,0.18));
+  }
+  .live-guide .guide-head {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .live-guide h3 { font-family: var(--display); font-weight: 600; font-size: 18px; }
+  .guide-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .guide-readouts {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
+  }
+  .readout {
+    padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: rgba(0,0,0,0.22);
+  }
+  .readout span {
+    display: block; color: #8a7e6d; font-size: 10.5px; font-weight: 600;
+    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px;
+  }
+  .readout b { font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .readout.feedback b.on { color: #1aa37a; }
+  .readout.feedback b.off { color: var(--rec); }
+  .guide-chart-wrap {
+    background: rgba(0,0,0,0.28); border: 1px solid var(--line);
+    border-radius: var(--radius-sm); padding: 10px;
+  }
+  #livePitchChart { width: 100%; height: 150px; display: block; }
+  .guide-status { min-height: 18px; font-size: 12.5px; color: var(--muted-text); }
 
   .segmented {
     display: inline-flex; padding: 4px; gap: 2px;
@@ -546,6 +619,7 @@
     .stepper { display: none; }
     .setup-grid { grid-template-columns: 1fr; }
     .practice-plan .plan-fields { grid-template-columns: 1fr; }
+    .guide-readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .transport-bar { flex-wrap: wrap; }
     .take-note-input { order: 5; flex: 1 1 100%; }
   }
@@ -688,6 +762,15 @@
               <input id="phraseFocus" placeholder="e.g. Best Part verse 1, chorus high note, line 2..." />
             </div>
             <div class="field">
+              <label>Playback pace</label>
+              <div class="pace-pills" id="pacePills">
+                <button type="button" data-rate="0.5">50%</button>
+                <button type="button" data-rate="0.75">75%</button>
+                <button type="button" class="active" data-rate="1">100%</button>
+                <button type="button" data-rate="1.25">125%</button>
+              </div>
+            </div>
+            <div class="field">
               <label>Take tempo</label>
               <div class="tempo-pills" id="tempoPills">
                 <button type="button" class="active" data-tempo="Slow">Slow</button>
@@ -697,10 +780,41 @@
             </div>
           </div>
         </div>
+        <div class="live-guide" aria-label="Live pitch guide">
+          <div class="guide-head">
+            <div>
+              <h3>Live pitch guide</h3>
+              <p class="muted">Prepare the song once, then get sharp / flat feedback while you sing.</p>
+            </div>
+            <div class="guide-actions">
+              <button id="prepareGuide" class="ghost">Prepare pitch guide</button>
+              <button id="startGuide" class="primary" disabled>Start live guide</button>
+              <button id="stopGuide" class="ghost" disabled>Stop guide</button>
+            </div>
+          </div>
+          <div class="guide-readouts">
+            <div class="readout"><span>Target</span><b id="targetNote">--</b></div>
+            <div class="readout"><span>You</span><b id="userNote">--</b></div>
+            <div class="readout"><span>Difference</span><b id="pitchDelta">--</b></div>
+            <div class="readout feedback"><span>Feedback</span><b id="pitchFeedback">Prepare</b></div>
+          </div>
+          <div class="guide-chart-wrap"><canvas id="livePitchChart"></canvas></div>
+          <p class="guide-status" id="guideStatus">Use the Original or Instrumental tab, then start the guide when you press play.</p>
+        </div>
         <div class="player-shell">
           <div id="videoPane" class="player-frame">
             <div id="songFrame"></div>
             <div id="songPlaceholder" class="placeholder"><div><div class="pi">&#9836;</div>Add a YouTube link for this source in Setup.</div></div>
+            <div id="lyricOverlay" class="lyric-overlay">
+              <div id="overlayLine" class="line">Paste lyrics in Setup to follow along.</div>
+              <div id="overlayNext" class="next"></div>
+              <div class="lyric-controls">
+                <button type="button" id="lyricPrev">&larr; Line</button>
+                <span id="lyricCount" class="lyric-count">0 / 0</span>
+                <button type="button" id="lyricNext">Line &rarr;</button>
+                <button type="button" id="lyricToggle">Hide lyrics</button>
+              </div>
+            </div>
           </div>
           <div id="lyricsPane" class="lyrics-view hidden"></div>
         </div>
@@ -813,6 +927,24 @@
     sessionStartedAt: 0,
     reflectRating: 0,
     takeTempo: "Slow",
+    playbackRate: 1,
+    lyricsOverlay: {
+      hidden: false,
+      manualIndex: null,
+      raf: 0,
+    },
+    liveGuide: {
+      ref: null,
+      running: false,
+      stream: null,
+      audioContext: null,
+      analyser: null,
+      data: null,
+      raf: 0,
+      history: [],
+      startedAt: 0,
+      fallbackSongTime: 0,
+    },
     currentSongKind: "original",
     triedVideos: { original: new Set(), instrumental: new Set(), lyricVideo: new Set() },
   };
@@ -836,6 +968,34 @@
     }
   }
 
+  function lyricLines() {
+    return $("lyricsInput").value
+      .split(/\n+/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+  }
+
+  function getSongDuration() {
+    const player = players.song;
+    if (player && typeof player.getDuration === "function") {
+      try {
+        const duration = player.getDuration();
+        if (Number.isFinite(duration) && duration > 0) return duration;
+      } catch (e) {}
+    }
+    const ref = state.liveGuide.ref;
+    if (ref && ref.times && ref.times.length) return ref.times[ref.times.length - 1] || 0;
+    return 0;
+  }
+
+  function applyPlaybackRate() {
+    const player = players.song;
+    if (!player || typeof player.setPlaybackRate !== "function") return;
+    try {
+      player.setPlaybackRate(state.playbackRate);
+    } catch (e) {}
+  }
+
   // ---------- YouTube IFrame players (with embed-error fallback) ----------
   const players = { warmup: null, song: null };
   const playerState = {
@@ -852,6 +1012,7 @@
         onReady: () => {
           playerState[which].ready = true;
           if (playerState[which].wantId !== undefined) applyVideo(which, playerState[which].wantId);
+          if (which === "song") applyPlaybackRate();
         },
         onError,
       },
@@ -876,6 +1037,7 @@
     if (ps.currentId === videoId) return;
     ps.currentId = videoId;
     try { player.cueVideoById(videoId); } catch (e) {}
+    if (which === "song") window.setTimeout(applyPlaybackRate, 250);
   }
 
   function showWarmupVideo(url) {
@@ -975,6 +1137,9 @@
   }
 
   function setStep(step) {
+    if (state.step === "song" && step !== "song" && state.liveGuide.running) {
+      stopLiveGuide();
+    }
     state.step = step;
     render();
   }
@@ -1068,9 +1233,70 @@
     };
     if (state.step === "song" && !showLyrics) {
       showSongVideo(state.activeTab, videoMap[state.activeTab] || "");
+      startLyricOverlayLoop();
     } else {
       applyVideo("song", "");
+      stopLyricOverlayLoop();
     }
+    renderLyricOverlay();
+  }
+
+  function overlayLineIndex(lines) {
+    if (!lines.length) return -1;
+    if (state.lyricsOverlay.manualIndex != null) {
+      return Math.max(0, Math.min(lines.length - 1, state.lyricsOverlay.manualIndex));
+    }
+    const duration = getSongDuration();
+    if (!duration) return 0;
+    const progress = Math.max(0, Math.min(0.999, currentSongTime() / duration));
+    return Math.max(0, Math.min(lines.length - 1, Math.floor(progress * lines.length)));
+  }
+
+  function renderLyricOverlay() {
+    const overlay = $("lyricOverlay");
+    if (!overlay) return;
+    const lines = lyricLines();
+    const isVideo = state.step === "song" && state.activeTab !== "lyrics";
+    overlay.classList.toggle("off", state.lyricsOverlay.hidden || !isVideo);
+    $("lyricToggle").textContent = state.lyricsOverlay.hidden ? "Show lyrics" : "Hide lyrics";
+
+    if (!lines.length) {
+      $("overlayLine").textContent = "Paste lyrics in Setup to follow along.";
+      $("overlayNext").textContent = "";
+      $("lyricCount").textContent = "0 / 0";
+      $("lyricPrev").disabled = true;
+      $("lyricNext").disabled = true;
+      return;
+    }
+
+    const idx = overlayLineIndex(lines);
+    $("overlayLine").textContent = lines[idx] || "";
+    $("overlayNext").textContent = lines[idx + 1] ? `Next: ${lines[idx + 1]}` : "";
+    $("lyricCount").textContent = `${idx + 1} / ${lines.length}`;
+    $("lyricPrev").disabled = idx <= 0;
+    $("lyricNext").disabled = idx >= lines.length - 1;
+  }
+
+  function startLyricOverlayLoop() {
+    if (state.lyricsOverlay.raf) return;
+    const tick = () => {
+      renderLyricOverlay();
+      state.lyricsOverlay.raf = requestAnimationFrame(tick);
+    };
+    state.lyricsOverlay.raf = requestAnimationFrame(tick);
+  }
+
+  function stopLyricOverlayLoop() {
+    if (state.lyricsOverlay.raf) cancelAnimationFrame(state.lyricsOverlay.raf);
+    state.lyricsOverlay.raf = 0;
+  }
+
+  function nudgeLyric(delta) {
+    const lines = lyricLines();
+    if (!lines.length) return;
+    const current = overlayLineIndex(lines);
+    state.lyricsOverlay.manualIndex = Math.max(0, Math.min(lines.length - 1, current + delta));
+    renderLyricOverlay();
   }
 
   function render() {
@@ -1233,6 +1459,267 @@
   function noteName(m) {
     const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
     return names[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  }
+
+  function hzToMidi(hz) {
+    return 69 + 12 * Math.log2(hz / 440);
+  }
+
+  function setGuideStatus(message) {
+    $("guideStatus").textContent = message;
+  }
+
+  async function prepareLiveGuide() {
+    const setup = getSetup();
+    if (!setup.originalUrl) {
+      setGuideStatus("Add the Original song YouTube link first.");
+      $("pitchFeedback").textContent = "No song";
+      return;
+    }
+
+    const btn = $("prepareGuide");
+    btn.disabled = true;
+    $("startGuide").disabled = true;
+    $("pitchFeedback").textContent = "Preparing";
+    $("pitchFeedback").className = "";
+    setGuideStatus("Preparing reference melody. First time for a song can take about 30-60 seconds.");
+    try {
+      const res = await fetch(`/api/reference?videoUrl=${encodeURIComponent(setup.originalUrl)}`);
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || ("server " + res.status));
+      if (!data.times || !data.times.length) throw new Error("No reference melody was returned.");
+      state.liveGuide.ref = data;
+      state.liveGuide.history = [];
+      $("startGuide").disabled = false;
+      $("pitchFeedback").textContent = "Ready";
+      setGuideStatus("Pitch guide ready. Press play on the video, then Start live guide.");
+      drawLivePitchChart();
+    } catch (err) {
+      $("pitchFeedback").textContent = "Error";
+      setGuideStatus(err.message);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function targetMidiAt(songTime) {
+    const ref = state.liveGuide.ref;
+    if (!ref || !ref.times || !ref.times.length) return null;
+    const times = ref.times;
+    let lo = 0, hi = times.length - 1;
+    while (lo < hi) {
+      const mid = Math.floor((lo + hi) / 2);
+      if (times[mid] < songTime) lo = mid + 1;
+      else hi = mid;
+    }
+    const candidates = [lo, lo - 1, lo + 1].filter((i) => i >= 0 && i < times.length);
+    let best = candidates[0];
+    for (const i of candidates) {
+      if (Math.abs(times[i] - songTime) < Math.abs(times[best] - songTime)) best = i;
+    }
+    for (let radius = 0; radius < 16; radius++) {
+      const left = best - radius;
+      const right = best + radius;
+      if (left >= 0 && ref.midi[left] != null) return { time: times[left], midi: ref.midi[left] };
+      if (right < ref.midi.length && ref.midi[right] != null) return { time: times[right], midi: ref.midi[right] };
+    }
+    return null;
+  }
+
+  function currentSongTime() {
+    const player = players.song;
+    if (player && typeof player.getCurrentTime === "function") {
+      try {
+        const t = player.getCurrentTime();
+        if (Number.isFinite(t) && t > 0) {
+          state.liveGuide.fallbackSongTime = t;
+          return t;
+        }
+      } catch (e) {}
+    }
+    if (!state.liveGuide.startedAt) return state.liveGuide.fallbackSongTime || 0;
+    return state.liveGuide.fallbackSongTime + ((Date.now() - state.liveGuide.startedAt) / 1000) * state.playbackRate;
+  }
+
+  function autoCorrelate(buffer, sampleRate) {
+    let rms = 0;
+    for (let i = 0; i < buffer.length; i++) rms += buffer[i] * buffer[i];
+    rms = Math.sqrt(rms / buffer.length);
+    if (rms < 0.012) return null;
+
+    let r1 = 0, r2 = buffer.length - 1;
+    const threshold = 0.2;
+    for (let i = 0; i < buffer.length / 2; i++) {
+      if (Math.abs(buffer[i]) < threshold) { r1 = i; break; }
+    }
+    for (let i = 1; i < buffer.length / 2; i++) {
+      if (Math.abs(buffer[buffer.length - i]) < threshold) { r2 = buffer.length - i; break; }
+    }
+    buffer = buffer.slice(r1, r2);
+
+    const size = buffer.length;
+    const correlations = new Array(size).fill(0);
+    for (let lag = 0; lag < size; lag++) {
+      for (let i = 0; i < size - lag; i++) correlations[lag] += buffer[i] * buffer[i + lag];
+    }
+
+    let d = 0;
+    while (d < correlations.length - 1 && correlations[d] > correlations[d + 1]) d++;
+    let max = -1;
+    let best = -1;
+    for (let i = d; i < correlations.length; i++) {
+      if (correlations[i] > max) { max = correlations[i]; best = i; }
+    }
+    if (best <= 0) return null;
+
+    const x1 = correlations[best - 1] || 0;
+    const x2 = correlations[best];
+    const x3 = correlations[best + 1] || 0;
+    const shift = (x3 - x1) / (2 * (2 * x2 - x1 - x3));
+    const period = best + (Number.isFinite(shift) ? shift : 0);
+    const hz = sampleRate / period;
+    return hz >= 65 && hz <= 1200 ? hz : null;
+  }
+
+  async function startLiveGuide() {
+    if (!state.liveGuide.ref) {
+      await prepareLiveGuide();
+      if (!state.liveGuide.ref) return;
+    }
+    if (!navigator.mediaDevices) {
+      setGuideStatus("Microphone is not available in this browser.");
+      return;
+    }
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const ctx = new AudioContextClass();
+      const analyser = ctx.createAnalyser();
+      analyser.fftSize = 2048;
+      ctx.createMediaStreamSource(stream).connect(analyser);
+      state.liveGuide.stream = stream;
+      state.liveGuide.audioContext = ctx;
+      state.liveGuide.analyser = analyser;
+      state.liveGuide.data = new Float32Array(analyser.fftSize);
+      state.liveGuide.running = true;
+      state.liveGuide.startedAt = Date.now();
+      state.liveGuide.fallbackSongTime = currentSongTime();
+      state.liveGuide.history = [];
+      $("prepareGuide").disabled = true;
+      $("startGuide").disabled = true;
+      $("stopGuide").disabled = false;
+      setGuideStatus("Listening live. Sing with the video and watch sharp / flat feedback.");
+      liveGuideTick();
+    } catch (err) {
+      setGuideStatus(`Microphone unavailable: ${err.message}`);
+    }
+  }
+
+  async function stopLiveGuide() {
+    state.liveGuide.running = false;
+    if (state.liveGuide.raf) cancelAnimationFrame(state.liveGuide.raf);
+    if (state.liveGuide.stream) state.liveGuide.stream.getTracks().forEach((track) => track.stop());
+    if (state.liveGuide.audioContext) await state.liveGuide.audioContext.close();
+    state.liveGuide.stream = null;
+    state.liveGuide.audioContext = null;
+    state.liveGuide.analyser = null;
+    state.liveGuide.data = null;
+    $("prepareGuide").disabled = false;
+    $("startGuide").disabled = !state.liveGuide.ref;
+    $("stopGuide").disabled = true;
+    setGuideStatus(state.liveGuide.ref ? "Live guide stopped. Start again when you replay the phrase." : "Prepare the guide before starting.");
+  }
+
+  function liveGuideTick() {
+    if (!state.liveGuide.running) return;
+    const analyser = state.liveGuide.analyser;
+    const data = state.liveGuide.data;
+    analyser.getFloatTimeDomainData(data);
+    const hz = autoCorrelate(data, state.liveGuide.audioContext.sampleRate);
+    const songTime = currentSongTime();
+    const target = targetMidiAt(songTime);
+    const userMidi = hz ? hzToMidi(hz) : null;
+    const cents = target && userMidi != null ? (userMidi - target.midi) * 100 : null;
+
+    $("targetNote").textContent = target ? noteName(Math.round(target.midi)) : "--";
+    $("userNote").textContent = userMidi != null ? noteName(Math.round(userMidi)) : "--";
+    $("pitchDelta").textContent = cents != null ? `${cents > 0 ? "+" : ""}${Math.round(cents)}¢` : "--";
+    const fb = $("pitchFeedback");
+    fb.className = "";
+    if (cents == null) {
+      fb.textContent = hz ? "No target" : "Sing";
+    } else if (Math.abs(cents) <= 35) {
+      fb.textContent = "On";
+      fb.classList.add("on");
+    } else {
+      fb.textContent = cents > 0 ? "Sharp" : "Flat";
+      fb.classList.add("off");
+    }
+
+    state.liveGuide.history.push({ t: songTime, target: target && target.midi, user: userMidi, cents });
+    const minTime = songTime - 8;
+    state.liveGuide.history = state.liveGuide.history.filter((p) => p.t >= minTime);
+    drawLivePitchChart();
+    state.liveGuide.raf = requestAnimationFrame(liveGuideTick);
+  }
+
+  function drawLivePitchChart() {
+    const canvas = $("livePitchChart");
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth || 760;
+    const cssH = 150;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const points = state.liveGuide.history;
+    ctx.fillStyle = "#8a7e6d";
+    ctx.font = "12px ui-sans-serif, sans-serif";
+    if (!points.length) {
+      ctx.fillText(state.liveGuide.ref ? "Start the guide to draw live pitch." : "Prepare the pitch guide first.", 12, 24);
+      return;
+    }
+
+    const valid = points.flatMap((p) => [p.target, p.user]).filter((v) => v != null);
+    if (!valid.length) return;
+    const lo = Math.floor(Math.min(...valid)) - 1;
+    const hi = Math.ceil(Math.max(...valid)) + 1;
+    const t1 = points[points.length - 1].t;
+    const t0 = Math.max(0, t1 - 8);
+    const X = (t) => cssW * (t - t0) / (t1 - t0 || 1);
+    const Y = (m) => cssH - 14 - (cssH - 28) * (m - lo) / (hi - lo || 1);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.lineWidth = 1;
+    for (let m = Math.ceil(lo); m <= hi; m++) {
+      if (m % 2) continue;
+      const y = Y(m);
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(cssW, y);
+      ctx.stroke();
+    }
+
+    ctx.strokeStyle = "#9b8e7c";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let started = false;
+    for (const p of points) {
+      if (p.target == null) { started = false; continue; }
+      if (!started) { ctx.moveTo(X(p.t), Y(p.target)); started = true; }
+      else ctx.lineTo(X(p.t), Y(p.target));
+    }
+    ctx.stroke();
+
+    for (const p of points) {
+      if (p.user == null) continue;
+      ctx.fillStyle = p.cents != null && Math.abs(p.cents) <= 35 ? "#1aa37a" : "#ff5b4d";
+      ctx.beginPath();
+      ctx.arc(X(p.t), Y(p.user), 2.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   function drawAnalysisChart(data) {
@@ -1635,6 +2122,9 @@
     $("finishWarmups").addEventListener("click", () => setStep("song"));
     $("recordBtn").addEventListener("click", startRecording);
     $("stopBtn").addEventListener("click", stopRecording);
+    $("prepareGuide").addEventListener("click", prepareLiveGuide);
+    $("startGuide").addEventListener("click", startLiveGuide);
+    $("stopGuide").addEventListener("click", stopLiveGuide);
     $("takesToggle").addEventListener("click", openDrawer);
     $("closeDrawer").addEventListener("click", closeDrawer);
     $("drawerOverlay").addEventListener("click", closePanels);
@@ -1655,6 +2145,22 @@
         $("takeNote").placeholder = `Note for ${state.takeTempo.toLowerCase()} take: what to improve next time?`;
       });
     }
+    for (const button of document.querySelectorAll("[data-rate]")) {
+      button.addEventListener("click", () => {
+        state.playbackRate = Number(button.dataset.rate) || 1;
+        for (const b of document.querySelectorAll("[data-rate]")) {
+          b.classList.toggle("active", b === button);
+        }
+        applyPlaybackRate();
+        setGuideStatus(`Playback pace set to ${Math.round(state.playbackRate * 100)}%.`);
+      });
+    }
+    $("lyricPrev").addEventListener("click", () => nudgeLyric(-1));
+    $("lyricNext").addEventListener("click", () => nudgeLyric(1));
+    $("lyricToggle").addEventListener("click", () => {
+      state.lyricsOverlay.hidden = !state.lyricsOverlay.hidden;
+      renderLyricOverlay();
+    });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanels(); });
     $("analyzeClose").addEventListener("click", closeAnalyze);
     $("analyzeModal").addEventListener("click", (event) => {
@@ -1677,7 +2183,10 @@
       await renderHistory();
     });
     for (const id of fields) {
-      $(id).addEventListener("input", render);
+      $(id).addEventListener("input", () => {
+        if (id === "lyricsInput") state.lyricsOverlay.manualIndex = null;
+        render();
+      });
     }
     for (const button of document.querySelectorAll("[data-tab]")) {
       button.addEventListener("click", () => {

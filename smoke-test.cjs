@@ -52,6 +52,12 @@ const MOCK_ANALYSIS = {
   centsErr: [10, -20, 60, -30, 20, -60],
 };
 
+const MOCK_REFERENCE = {
+  videoId: "aaaaaaaaaaa",
+  times: Array.from({ length: 40 }, (_, i) => i * 0.25),
+  midi: Array.from({ length: 40 }, (_, i) => 60 + (i % 8) * 0.35),
+};
+
 async function main() {
   const browser = await chromium.launch({
     args: [
@@ -75,6 +81,9 @@ async function main() {
   );
   await context.route(/\/api\/analyze(?:\?|$)/, (route) =>
     route.fulfill({ contentType: "application/json", body: JSON.stringify(MOCK_ANALYSIS) })
+  );
+  await context.route(/\/api\/reference(?:\?|$)/, (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify(MOCK_REFERENCE) })
   );
   // Don't actually load YouTube (iframes or the player API).
   await context.route(/^https:\/\/([^/]+\.)?youtube\.com\//, (route) => route.abort());
@@ -155,6 +164,18 @@ async function main() {
   check("transport bar visible on sing", await page.isVisible("#transportBar"));
   check("finish & reflect button visible on sing", await page.isVisible("#endSessionBtn"));
   check("practice drill controls visible", await page.isVisible("#phraseFocus"));
+  check("live pitch guide visible", await page.isVisible("#prepareGuide"));
+  check("playback pace controls visible", await page.isVisible("#pacePills"));
+  check("lyric overlay visible", await page.isVisible("#lyricOverlay"));
+  check("lyric overlay shows first lyric", (await page.textContent("#overlayLine")).includes("la la la"));
+  await page.click('[data-rate="0.75"]');
+  check("75 percent pace selected", await page.evaluate(() => document.querySelector('[data-rate="0.75"]').classList.contains("active")));
+  await page.click("#lyricNext");
+  check("lyric overlay can nudge forward", (await page.textContent("#overlayLine")).includes("second line"));
+  await page.click("#lyricToggle");
+  check("lyric overlay collapses", await page.evaluate(() => document.getElementById("lyricOverlay").classList.contains("off")));
+  await page.click("#lyricToggle");
+  check("lyric overlay shows again", await page.isVisible("#lyricOverlay"));
 
   // --- Source tabs ---
   console.log("Source tabs");
@@ -163,6 +184,16 @@ async function main() {
   check("video pane hidden on Lyrics tab", !(await page.isVisible("#videoPane")));
   await page.click('[data-tab="original"]');
   check("video pane shows on Original tab", await page.isVisible("#videoPane"));
+
+  // --- Live pitch guide ---
+  console.log("Live pitch guide");
+  await page.click("#prepareGuide");
+  check("live guide prepares reference", await waitTrue(() => !document.getElementById("startGuide").disabled));
+  await page.click("#startGuide");
+  check("live guide starts microphone loop", await waitTrue(() => document.getElementById("stopGuide").disabled === false));
+  check("live guide chart visible", await page.isVisible("#livePitchChart"));
+  await page.click("#stopGuide");
+  check("live guide stops", await waitTrue(() => document.getElementById("stopGuide").disabled === true));
 
   // --- Video embed fallback ---
   console.log("Video embed fallback");
