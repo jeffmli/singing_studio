@@ -164,7 +164,7 @@ async function main() {
   check("transport bar visible on sing", await page.isVisible("#transportBar"));
   check("finish & reflect button visible on sing", await page.isVisible("#endSessionBtn"));
   check("practice drill controls visible", await page.isVisible("#phraseFocus"));
-  check("live pitch guide visible", await page.isVisible("#prepareGuide"));
+  check("live pitch guide is collapsed by default", await page.isVisible(".live-guide summary") && !(await page.isVisible("#prepareGuide")));
   check("playback pace controls visible", await page.isVisible("#pacePills"));
   check("lyric overlay visible", await page.isVisible("#lyricOverlay"));
   check("lyric overlay shows first lyric", (await page.textContent("#overlayLine")).includes("la la la"));
@@ -187,6 +187,8 @@ async function main() {
 
   // --- Live pitch guide ---
   console.log("Live pitch guide");
+  await page.click(".live-guide summary");
+  check("live guide controls reveal on open", await page.isVisible("#prepareGuide"));
   await page.click("#prepareGuide");
   check("live guide prepares reference", await waitTrue(() => !document.getElementById("startGuide").disabled));
   await page.click("#startGuide");

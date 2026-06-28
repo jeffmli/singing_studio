@@ -165,6 +165,7 @@
     animation: stageIn 380ms cubic-bezier(0.22, 1, 0.36, 1);
   }
   .stage.active { display: block; }
+  #stageSong { width: min(960px, 92vw); }
   @keyframes stageIn {
     from { opacity: 0; transform: translateY(14px); }
     to { opacity: 1; transform: translateY(0); }
@@ -276,37 +277,27 @@
   .sing-grid { }
   .sing-top {
     display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; margin-bottom: 18px; flex-wrap: wrap;
+    gap: 16px; margin-bottom: 12px; flex-wrap: wrap;
   }
   .song-name { font-family: var(--display); font-weight: 500; font-size: clamp(22px, 3vw, 32px); }
   .practice-plan {
-    display: grid; gap: 12px; margin-bottom: 18px; padding: 14px;
+    display: grid; gap: 12px; margin-bottom: 14px; padding: 12px;
     border: 1px solid var(--line); border-radius: var(--radius-sm);
-    background: rgba(0,0,0,0.2);
+    background: rgba(0,0,0,0.16);
   }
-  .practice-plan .plan-head {
-    display: flex; align-items: baseline; justify-content: space-between;
-    gap: 12px; flex-wrap: wrap;
-  }
-  .practice-plan h3 { font-family: var(--display); font-weight: 600; font-size: 18px; }
   .practice-plan .plan-fields {
-    display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 12px;
-    align-items: end;
+    display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 10px;
+    align-items: end; margin: 0;
   }
-  .tempo-pills { display: flex; gap: 8px; flex-wrap: wrap; }
-  .tempo-pills button {
-    min-height: 36px; padding: 7px 12px; border-radius: 999px;
-    color: #9b8e7c; background: rgba(255,255,255,0.03);
+  .practice-plan .field { margin: 0; gap: 6px; }
+  .practice-plan input { min-height: 38px; padding: 8px 11px; }
+  .phrase-field { min-width: 260px; }
+  .tempo-pills, .pace-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .tempo-pills button, .pace-pills button {
+    min-height: 34px; padding: 6px 10px; border-radius: 999px;
+    color: #9b8e7c; background: rgba(255,255,255,0.03); font-size: 13px;
   }
-  .tempo-pills button.active {
-    color: #2a1903; background: var(--amber); border-color: var(--amber);
-  }
-  .pace-pills { display: flex; gap: 8px; flex-wrap: wrap; }
-  .pace-pills button {
-    min-height: 36px; padding: 7px 12px; border-radius: 999px;
-    color: #9b8e7c; background: rgba(255,255,255,0.03);
-  }
-  .pace-pills button.active {
+  .tempo-pills button.active, .pace-pills button.active {
     color: #2a1903; background: var(--amber); border-color: var(--amber);
   }
   .lyric-overlay {
@@ -344,16 +335,25 @@
   }
   .lyric-controls .lyric-count { color: #8a7e6d; font-size: 12px; min-width: 58px; text-align: center; }
   .live-guide {
-    display: grid; gap: 12px; margin-bottom: 18px; padding: 14px;
+    display: grid; gap: 12px; margin-top: 14px; margin-bottom: 90px; padding: 0;
     border: 1px solid rgba(245,165,36,0.22); border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, rgba(245,165,36,0.08), rgba(0,0,0,0.18));
+    background: rgba(0,0,0,0.16); overflow: hidden;
   }
-  .live-guide .guide-head {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 12px; flex-wrap: wrap;
+  .live-guide > summary {
+    list-style: none; cursor: pointer; padding: 12px 14px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
   }
-  .live-guide h3 { font-family: var(--display); font-weight: 600; font-size: 18px; }
-  .guide-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .live-guide > summary::-webkit-details-marker { display: none; }
+  .live-guide summary b { font-family: var(--display); font-weight: 600; font-size: 17px; }
+  .live-guide summary small { display: block; color: #8a7e6d; font-size: 12.5px; margin-top: 2px; }
+  .summary-action { color: var(--amber-bright); font-size: 12.5px; font-weight: 600; }
+  .live-guide[open] .summary-action { font-size: 0; }
+  .live-guide[open] .summary-action::after { content: "Close"; font-size: 12.5px; }
+  .guide-panel {
+    display: grid; gap: 12px; padding: 0 14px 14px;
+    border-top: 1px solid var(--line);
+  }
+  .guide-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 12px; }
   .guide-readouts {
     display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
   }
@@ -403,9 +403,9 @@
   /* ---------- Transport bar (recorder) ---------- */
   .transport-bar {
     position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
-    z-index: 40; width: min(940px, 92vw);
+    z-index: 40; width: min(860px, 92vw);
     display: none; align-items: center; gap: 16px;
-    padding: 12px 14px 12px 18px;
+    padding: 10px 12px;
     background: rgba(28, 22, 18, 0.86);
     backdrop-filter: blur(16px);
     border: 1px solid var(--line-strong);
@@ -458,8 +458,8 @@
     background: linear-gradient(90deg, var(--amber), var(--amber-bright));
     transition: width 90ms linear;
   }
-  .take-note-input { flex: 1.4; min-width: 120px; }
-  .take-note-input input { min-height: 46px; }
+  .take-note-input { flex: 1.2; min-width: 130px; }
+  .take-note-input input { min-height: 42px; padding: 9px 11px; }
 
   .takes-toggle {
     display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
@@ -748,18 +748,11 @@
             <button data-tab="lyrics">Lyrics</button>
           </div>
         </div>
-        <div class="practice-plan" aria-label="Practice drill">
-          <div class="plan-head">
-            <div>
-              <h3>Today&apos;s drill</h3>
-              <p class="muted">Lock the pitch slowly, then bridge toward normal speed.</p>
-            </div>
-            <p class="muted">Suggested ladder: 2 slow takes, 2 medium takes, 1 normal transfer.</p>
-          </div>
+        <div class="practice-plan" aria-label="Practice controls">
           <div class="plan-fields">
-            <div class="field">
+            <div class="field phrase-field">
               <label for="phraseFocus">Phrase focus</label>
-              <input id="phraseFocus" placeholder="e.g. Best Part verse 1, chorus high note, line 2..." />
+              <input id="phraseFocus" placeholder="Verse 1, chorus high note, line 2..." />
             </div>
             <div class="field">
               <label>Playback pace</label>
@@ -771,7 +764,7 @@
               </div>
             </div>
             <div class="field">
-              <label>Take tempo</label>
+              <label>Take label</label>
               <div class="tempo-pills" id="tempoPills">
                 <button type="button" class="active" data-tempo="Slow">Slow</button>
                 <button type="button" data-tempo="Medium">Medium</button>
@@ -779,27 +772,6 @@
               </div>
             </div>
           </div>
-        </div>
-        <div class="live-guide" aria-label="Live pitch guide">
-          <div class="guide-head">
-            <div>
-              <h3>Live pitch guide</h3>
-              <p class="muted">Prepare the song once, then get sharp / flat feedback while you sing.</p>
-            </div>
-            <div class="guide-actions">
-              <button id="prepareGuide" class="ghost">Prepare pitch guide</button>
-              <button id="startGuide" class="primary" disabled>Start live guide</button>
-              <button id="stopGuide" class="ghost" disabled>Stop guide</button>
-            </div>
-          </div>
-          <div class="guide-readouts">
-            <div class="readout"><span>Target</span><b id="targetNote">--</b></div>
-            <div class="readout"><span>You</span><b id="userNote">--</b></div>
-            <div class="readout"><span>Difference</span><b id="pitchDelta">--</b></div>
-            <div class="readout feedback"><span>Feedback</span><b id="pitchFeedback">Prepare</b></div>
-          </div>
-          <div class="guide-chart-wrap"><canvas id="livePitchChart"></canvas></div>
-          <p class="guide-status" id="guideStatus">Use the Original or Instrumental tab, then start the guide when you press play.</p>
         </div>
         <div class="player-shell">
           <div id="videoPane" class="player-frame">
@@ -818,6 +790,30 @@
           </div>
           <div id="lyricsPane" class="lyrics-view hidden"></div>
         </div>
+        <details class="live-guide" aria-label="Live pitch guide">
+          <summary>
+            <span>
+              <b>Live pitch guide</b>
+              <small id="guideSummary">Optional real-time sharp / flat feedback</small>
+            </span>
+            <span class="summary-action">Open</span>
+          </summary>
+          <div class="guide-panel">
+            <div class="guide-actions">
+              <button id="prepareGuide" class="ghost">Prepare guide</button>
+              <button id="startGuide" class="primary" disabled>Start live</button>
+              <button id="stopGuide" class="ghost" disabled>Stop</button>
+            </div>
+            <div class="guide-readouts">
+              <div class="readout"><span>Target</span><b id="targetNote">--</b></div>
+              <div class="readout"><span>You</span><b id="userNote">--</b></div>
+              <div class="readout"><span>Difference</span><b id="pitchDelta">--</b></div>
+              <div class="readout feedback"><span>Feedback</span><b id="pitchFeedback">Prepare</b></div>
+            </div>
+            <div class="guide-chart-wrap"><canvas id="livePitchChart"></canvas></div>
+            <p class="guide-status" id="guideStatus">Use Original or Instrumental, then start the guide when you press play.</p>
+          </div>
+        </details>
       </div>
     </section>
   </main>
@@ -825,12 +821,12 @@
   <!-- Transport bar (only on Sing) -->
   <div class="rec-status" id="recordingStatus">Microphone is idle.</div>
   <div class="transport-bar" id="transportBar">
-    <button id="recordBtn" class="rec-btn"><span class="ring"></span>Record take</button>
+    <button id="recordBtn" class="rec-btn"><span class="ring"></span>Record</button>
     <button id="stopBtn" class="stop-btn" disabled><span class="sq"></span>Stop</button>
     <span class="rec-timer" id="recTimer"><span class="pulse"></span>0:00</span>
     <div class="meter-wrap"><div class="meter" aria-label="Input level"><span id="meterBar"></span></div></div>
-    <div class="take-note-input"><input id="takeNote" placeholder="Note: what to improve next time?" /></div>
-    <button id="takesToggle" class="ghost takes-toggle">Your takes <span class="badge zero" id="takesCount">0</span></button>
+    <div class="take-note-input"><input id="takeNote" placeholder="Take note" /></div>
+    <button id="takesToggle" class="ghost takes-toggle">Takes <span class="badge zero" id="takesCount">0</span></button>
   </div>
 
   <!-- Takes drawer -->
@@ -1107,9 +1103,9 @@
     };
   }
 
-  function saveSetup() {
+  function saveSetup({ silent = false } = {}) {
     localStorage.setItem(setupKey, JSON.stringify(getSetup()));
-    setRecordingStatus("Setup saved.");
+    if (!silent) setRecordingStatus("Setup saved.");
     render();
   }
 
@@ -2101,7 +2097,7 @@
     });
     $("saveSetup").addEventListener("click", saveSetup);
     $("startSession").addEventListener("click", () => {
-      saveSetup();
+      saveSetup({ silent: true });
       startNewSession();
       state.warmupIndex = 0;
       setStep("warmups");
