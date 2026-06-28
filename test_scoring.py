@@ -73,10 +73,28 @@ def test_margin_gives_partial_credit():
     print(f"ok margin_partial_credit score={res['score']}")
 
 
+def test_speechy_contour_is_rejected():
+    melody = 60 + 2 * np.sin(np.linspace(0, 5, 240))
+    ref, times, f0 = _ref_from_midi(melody)
+    speechy = np.array(f0, copy=True)
+    voiced = np.zeros_like(speechy, dtype=bool)
+    for start in range(0, len(voiced), 4):
+        voiced[start:start + 2] = True
+    speechy[~voiced] = np.nan
+    try:
+        analysis.align_and_score(times, speechy, ref)
+    except ValueError as exc:
+        assert "speech" in str(exc).lower() or "singing" in str(exc).lower()
+        print("ok speechy_contour_rejected")
+        return
+    raise AssertionError("speech-like contour should not score as accurate singing")
+
+
 if __name__ == "__main__":
     test_fold_cents()
     test_frame_credit()
     test_gate_confidence()
     test_octave_error_does_not_tank_score()
     test_margin_gives_partial_credit()
+    test_speechy_contour_is_rejected()
     print("ALL PASS")

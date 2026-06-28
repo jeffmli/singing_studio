@@ -21,6 +21,8 @@ FMAX_NOTE = "C6"
 IN_TUNE_CENTS = 35          # within this many cents = full credit ("in tune")
 TOLERANCE_MARGIN_CENTS = 15  # soft band past the core: partial credit, not zero
 CONF_THRESHOLD = 0.5        # drop pyin frames below this voiced probability
+MIN_SINGING_CONFIDENCE = 0.28  # reject speechy / staccato input that is not really singing
+MIN_SUSTAINED_RUN_SEC = 0.12
 CACHE_DIR = os.path.expanduser("~/Library/Application Support/Singing Studio/refcache")
 
 
@@ -191,6 +193,47 @@ def _frame_credit(abs_cents, np):
     return np.clip((edge - np.asarray(abs_cents, dtype=float)) / TOLERANCE_MARGIN_CENTS, 0.0, 1.0)
 
 
+def _singing_confidence(user_times, user_voiced, np):
+    """Estimate whether the take sounds like singing instead of short speech bursts.
+
+    Speech often yields many brief voiced islands. Singing tends to produce
+    longer, more sustained voiced runs, even when the melody changes.
+    """
+    voiced_idx = np.flatnonzero(np.asarray(user_voiced, dtype=bool))
+    if voiced_idx.size < 10:
+      return 0.0
+
+    if len(user_times) > 1:
+        hop = float(np.median(np.diff(np.asarray(user_times, dtype=float))))
+    else:
+        hop = 0.01
+
+    runs = []
+    start = voiced_idx[0]
+    prev = start
+    for idx in voiced_idx[1:]:
+        if idx != prev + 1:
+            runs.append((prev - start + 1) * hop)
+            start = idx
+        prev = idx
+    runs.append((prev - start + 1) * hop)
+
+    runs = np.asarray(runs, dtype=float)
+    voiced_sec = float(np.sum(runs))
+    if voiced_sec <= 0:
+        return 0.0
+
+    sustained = float(np.sum(runs[runs >= MIN_SUSTAINED_RUN_SEC]) / voiced_sec)
+    median_run = float(np.median(runs))
+    median_score = float(np.clip((median_run - 0.08) / 0.16, 0.0, 1.0))
+    long_run_share = float(np.mean(runs >= MIN_SUSTAINED_RUN_SEC))
+    return float(
+        0.55 * sustained +
+        0.25 * median_score +
+        0.20 * long_run_share
+    )
+
+
 # ---------- alignment + scoring ----------
 def align_and_score(user_times, user_f0, ref):
     """Subsequence-DTW align the user take to the reference, score in cents."""
@@ -205,6 +248,12 @@ def align_and_score(user_times, user_f0, ref):
     ref_voiced = ~np.isnan(ref_midi)
     if user_voiced.sum() < 10:
         raise ValueError("Couldn't detect enough singing in the take.")
+
+    singing_confidence = _singing_confidence(user_times, user_voiced, np)
+    if singing_confidence < MIN_SINGING_CONFIDENCE:
+        raise ValueError(
+            "That sounds more like speech than sustained singing. Try a held vowel or a slower phrase."
+        )
 
     # Continuous 1-D features for DTW (query = user, db = reference).
     # Remove each contour's mean first, so alignment matches on melodic SHAPE
@@ -247,6 +296,7 @@ def align_and_score(user_times, user_f0, ref):
         "medianCents": round(median_cents),
         "meanSignedCents": round(mean_signed, 1),
         "tendency": tendency,
+        "singingConfidence": round(singing_confidence, 2),
         "frames": len(times),
         "times": times[::step],
         "userMidi": u_out[::step],
