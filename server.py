@@ -108,14 +108,23 @@ def _get_json(url):
         return json.loads(resp.read().decode("utf-8"))
 
 
+def _extract_lrclib(item):
+    """Pull (plain, synced) out of an lrclib item, each stripped. synced keeps
+    its [mm:ss.xx] tags — they're what powers the timed lyric caption."""
+    item = item or {}
+    return ((item.get("plainLyrics") or "").strip(),
+            (item.get("syncedLyrics") or "").strip())
+
+
 def _lrclib_get(artist, song):
     try:
         url = "https://lrclib.net/api/get?" + urllib.parse.urlencode(
             {"artist_name": artist, "track_name": song}
         )
-        return (_get_json(url).get("plainLyrics") or "").strip()
+        plain, synced = _extract_lrclib(_get_json(url))
+        return {"plain": plain, "synced": synced}
     except Exception:
-        return ""
+        return {"plain": "", "synced": ""}
 
 
 def _lrclib_search(query):
@@ -123,10 +132,11 @@ def _lrclib_search(query):
         url = "https://lrclib.net/api/search?" + urllib.parse.urlencode({"q": query})
         for item in _get_json(url) or []:
             if item.get("plainLyrics"):
-                return item["plainLyrics"].strip()
+                plain, synced = _extract_lrclib(item)
+                return {"plain": plain, "synced": synced}
     except Exception:
         pass
-    return ""
+    return {"plain": "", "synced": ""}
 
 
 def _lyrics_ovh(artist, song):
@@ -154,15 +164,19 @@ def _clean_lyrics(text):
 
 
 def fetch_lyrics(artist, song, query):
-    """Best-effort lyrics: lrclib (exact, then search), then lyrics.ovh."""
-    text = ""
+    """Best-effort lyrics: lrclib (exact, then search), then lyrics.ovh.
+
+    Returns (plain, synced): plain is cleaned of timestamp tags for display;
+    synced is the raw LRC (with [mm:ss.xx] tags) for the live caption, or ""
+    when the source has none (e.g. the lyrics.ovh fallback)."""
+    res = {"plain": "", "synced": ""}
     if artist and song:
-        text = _lrclib_get(artist, song)
-    if not text:
-        text = _lrclib_search(f"{artist} {song}".strip() or query)
-    if not text and artist and song:
-        text = _lyrics_ovh(artist, song)
-    return _clean_lyrics(text)
+        res = _lrclib_get(artist, song)
+    if not res["plain"]:
+        res = _lrclib_search(f"{artist} {song}".strip() or query)
+    if not res["plain"] and artist and song:
+        res = {"plain": _lyrics_ovh(artist, song), "synced": ""}
+    return _clean_lyrics(res["plain"]), res["synced"]
 
 
 def do_search(query):
@@ -176,10 +190,11 @@ def do_search(query):
         lyric_video = f_lyric_video.result()
 
     lyrics = ""
+    synced_lyrics = ""
     title = query
     if original:
         artist, song = split_artist_title(original["title"], original.get("channel", ""))
-        lyrics = fetch_lyrics(artist, song, query)
+        lyrics, synced_lyrics = fetch_lyrics(artist, song, query)
         if artist and song:
             title = f"{artist} – {song}"
         elif song:
@@ -192,6 +207,7 @@ def do_search(query):
         "instrumental": instrumental,
         "lyricVideo": lyric_video,
         "lyrics": lyrics,
+        "syncedLyrics": synced_lyrics,
     }
 
 
