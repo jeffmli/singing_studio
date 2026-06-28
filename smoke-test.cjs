@@ -191,6 +191,8 @@ async function main() {
   check("live guide controls reveal on open", await page.isVisible("#prepareGuide"));
   await page.click("#prepareGuide");
   check("live guide prepares reference", await waitTrue(() => !document.getElementById("startGuide").disabled));
+  await page.click("#refreshGuide");
+  check("live guide can resync", await waitTrue(() => document.getElementById("guideStatus").textContent.includes("resynced")));
   await page.click("#startGuide");
   check("live guide starts microphone loop", await waitTrue(() => document.getElementById("stopGuide").disabled === false));
   check("live guide chart visible", await page.isVisible("#livePitchChart"));

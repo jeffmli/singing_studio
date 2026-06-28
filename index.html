@@ -801,6 +801,7 @@
           <div class="guide-panel">
             <div class="guide-actions">
               <button id="prepareGuide" class="ghost">Prepare guide</button>
+              <button id="refreshGuide" class="ghost" disabled>Refresh sync</button>
               <button id="startGuide" class="primary" disabled>Start live</button>
               <button id="stopGuide" class="ghost" disabled>Stop</button>
             </div>
@@ -1486,6 +1487,7 @@
       if (!data.times || !data.times.length) throw new Error("No reference melody was returned.");
       state.liveGuide.ref = data;
       state.liveGuide.history = [];
+      $("refreshGuide").disabled = false;
       $("startGuide").disabled = false;
       $("pitchFeedback").textContent = "Ready";
       setGuideStatus("Pitch guide ready. Press play on the video, then Start live guide.");
@@ -1602,6 +1604,7 @@
       state.liveGuide.fallbackSongTime = currentSongTime();
       state.liveGuide.history = [];
       $("prepareGuide").disabled = true;
+      $("refreshGuide").disabled = true;
       $("startGuide").disabled = true;
       $("stopGuide").disabled = false;
       setGuideStatus("Listening live. Sing with the video and watch sharp / flat feedback.");
@@ -1621,9 +1624,27 @@
     state.liveGuide.analyser = null;
     state.liveGuide.data = null;
     $("prepareGuide").disabled = false;
+    $("refreshGuide").disabled = !state.liveGuide.ref;
     $("startGuide").disabled = !state.liveGuide.ref;
     $("stopGuide").disabled = true;
     setGuideStatus(state.liveGuide.ref ? "Live guide stopped. Start again when you replay the phrase." : "Prepare the guide before starting.");
+  }
+
+  function refreshLiveGuide() {
+    if (!state.liveGuide.ref) {
+      setGuideStatus("Prepare the guide first.");
+      return;
+    }
+    const songTime = currentSongTime();
+    state.liveGuide.fallbackSongTime = songTime;
+    state.liveGuide.startedAt = Date.now();
+    state.liveGuide.history = [];
+    state.lyricsOverlay.manualIndex = null;
+    renderLyricOverlay();
+    drawLivePitchChart();
+    setGuideStatus(state.liveGuide.running
+      ? "Live guide resynced to the current video position."
+      : "Guide resynced. Press Start live when you are ready.");
   }
 
   function liveGuideTick() {
@@ -2119,6 +2140,7 @@
     $("recordBtn").addEventListener("click", startRecording);
     $("stopBtn").addEventListener("click", stopRecording);
     $("prepareGuide").addEventListener("click", prepareLiveGuide);
+    $("refreshGuide").addEventListener("click", refreshLiveGuide);
     $("startGuide").addEventListener("click", startLiveGuide);
     $("stopGuide").addEventListener("click", stopLiveGuide);
     $("takesToggle").addEventListener("click", openDrawer);
