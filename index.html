@@ -279,6 +279,28 @@
     gap: 16px; margin-bottom: 18px; flex-wrap: wrap;
   }
   .song-name { font-family: var(--display); font-weight: 500; font-size: clamp(22px, 3vw, 32px); }
+  .practice-plan {
+    display: grid; gap: 12px; margin-bottom: 18px; padding: 14px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: rgba(0,0,0,0.2);
+  }
+  .practice-plan .plan-head {
+    display: flex; align-items: baseline; justify-content: space-between;
+    gap: 12px; flex-wrap: wrap;
+  }
+  .practice-plan h3 { font-family: var(--display); font-weight: 600; font-size: 18px; }
+  .practice-plan .plan-fields {
+    display: grid; grid-template-columns: minmax(220px, 1fr) auto; gap: 12px;
+    align-items: end;
+  }
+  .tempo-pills { display: flex; gap: 8px; flex-wrap: wrap; }
+  .tempo-pills button {
+    min-height: 36px; padding: 7px 12px; border-radius: 999px;
+    color: #9b8e7c; background: rgba(255,255,255,0.03);
+  }
+  .tempo-pills button.active {
+    color: #2a1903; background: var(--amber); border-color: var(--amber);
+  }
 
   .segmented {
     display: inline-flex; padding: 4px; gap: 2px;
@@ -420,6 +442,7 @@
   .take strong { font-family: var(--display); font-weight: 500; font-size: 16px; }
   .take .meta { color: #97897680; }
   .take .meta { color: #978976; font-size: 12.5px; margin-top: 2px; }
+  .take .drill { color: var(--amber-bright); font-size: 12.5px; margin-top: 4px; }
   .take audio { width: 100%; height: 36px; }
   .take-actions { display: flex; gap: 8px; }
   .take-actions a { text-decoration: none; flex: 1; }
@@ -457,12 +480,12 @@
     position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
     padding: 20px; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
   }
-  body.reflect-open .modal-wrap { opacity: 1; pointer-events: auto; }
+  body.reflect-open #reflectModal { opacity: 1; pointer-events: auto; }
   .modal {
     width: min(520px, 100%); padding: 28px; display: grid; gap: 16px;
     transform: translateY(14px) scale(0.98); transition: transform 240ms cubic-bezier(0.22,1,0.36,1);
   }
-  body.reflect-open .modal { transform: translateY(0) scale(1); }
+  body.reflect-open #reflectModal .modal { transform: translateY(0) scale(1); }
   .modal h2 { font-family: var(--display); font-weight: 600; font-size: 26px; }
   .modal .field { margin: 0; gap: 8px; }
   .modal textarea { min-height: 70px; }
@@ -476,6 +499,35 @@
   }
   .stars .star:hover { transform: scale(1.12); background: transparent; }
   .stars .star.lit { color: var(--amber); }
+
+  /* ---------- Pitch analysis modal ---------- */
+  body.analyze-open .modal-wrap#analyzeModal { opacity: 1; pointer-events: auto; }
+  #analyzeModal .modal { transform: translateY(14px) scale(0.98); transition: transform 240ms cubic-bezier(0.22,1,0.36,1); }
+  body.analyze-open #analyzeModal .modal { transform: translateY(0) scale(1); }
+  .analyze-card { width: min(840px, 100%); padding: 24px 26px; }
+  .analyze-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+  .analyze-head h2 { font-family: var(--display); font-weight: 600; font-size: 24px; }
+  .analyze-head .x { min-height: 36px; padding: 6px 12px; }
+
+  .analyze-loading { text-align: center; padding: 40px 16px; color: var(--muted-text); }
+  .analyze-loading .spin { width: 22px; height: 22px; border-width: 3px; display: block; margin: 0 auto 16px; }
+  .analyze-loading .sub { font-size: 13px; margin-top: 8px; color: #8a7e6d; }
+
+  .analyze-summary { display: flex; align-items: center; gap: 24px; margin-bottom: 18px; flex-wrap: wrap; }
+  .score-big { font-family: var(--display); font-weight: 600; line-height: 1; }
+  .score-big .num { font-size: 64px; color: var(--amber-bright); }
+  .score-big .pct { font-size: 26px; color: var(--amber); }
+  .score-big .lbl { display: block; font-family: var(--sans); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #8a7e6d; margin-top: 6px; }
+  .analyze-stats { display: grid; gap: 6px; font-size: 14.5px; }
+  .analyze-stats b { color: var(--amber-bright); font-weight: 600; }
+  .analyze-chart-wrap { background: rgba(0,0,0,0.28); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; }
+  #analyzeChart { width: 100%; height: 260px; display: block; }
+  .analyze-legend { display: flex; gap: 16px; justify-content: center; margin-top: 10px; font-size: 12.5px; color: var(--muted-text); }
+  .analyze-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .analyze-error { padding: 28px 10px; text-align: center; color: #ff8a80; }
+
+  .take-actions .analyze-btn { color: var(--amber-bright); border-color: rgba(245,165,36,0.35); }
+  .take-actions .analyze-btn:hover { background: rgba(245,165,36,0.12); }
 
   /* ---------- Toast ---------- */
   .toast {
@@ -493,6 +545,7 @@
     .topbar { grid-template-columns: 1fr auto; padding: 12px 16px; }
     .stepper { display: none; }
     .setup-grid { grid-template-columns: 1fr; }
+    .practice-plan .plan-fields { grid-template-columns: 1fr; }
     .transport-bar { flex-wrap: wrap; }
     .take-note-input { order: 5; flex: 1 1 100%; }
   }
@@ -621,6 +674,29 @@
             <button data-tab="lyrics">Lyrics</button>
           </div>
         </div>
+        <div class="practice-plan" aria-label="Practice drill">
+          <div class="plan-head">
+            <div>
+              <h3>Today&apos;s drill</h3>
+              <p class="muted">Lock the pitch slowly, then bridge toward normal speed.</p>
+            </div>
+            <p class="muted">Suggested ladder: 2 slow takes, 2 medium takes, 1 normal transfer.</p>
+          </div>
+          <div class="plan-fields">
+            <div class="field">
+              <label for="phraseFocus">Phrase focus</label>
+              <input id="phraseFocus" placeholder="e.g. Best Part verse 1, chorus high note, line 2..." />
+            </div>
+            <div class="field">
+              <label>Take tempo</label>
+              <div class="tempo-pills" id="tempoPills">
+                <button type="button" class="active" data-tempo="Slow">Slow</button>
+                <button type="button" data-tempo="Medium">Medium</button>
+                <button type="button" data-tempo="Normal">Normal</button>
+              </div>
+            </div>
+          </div>
+        </div>
         <div class="player-shell">
           <div id="videoPane" class="player-frame">
             <div id="songFrame"></div>
@@ -701,6 +777,17 @@
     </div>
   </div>
 
+  <!-- Pitch analysis modal -->
+  <div class="modal-wrap" id="analyzeModal" aria-label="Pitch analysis">
+    <div class="modal card analyze-card">
+      <div class="analyze-head">
+        <h2>Pitch analysis</h2>
+        <button class="ghost x" id="analyzeClose">Close</button>
+      </div>
+      <div id="analyzeBody"></div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div class="toast" id="toast"></div>
 
@@ -725,12 +812,13 @@
     sessionId: null,
     sessionStartedAt: 0,
     reflectRating: 0,
+    takeTempo: "Slow",
     currentSongKind: "original",
     triedVideos: { original: new Set(), instrumental: new Set(), lyricVideo: new Set() },
   };
 
   const $ = (id) => document.getElementById(id);
-  const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput"];
+  const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput", "phraseFocus"];
 
   function parseYouTubeId(value) {
     const raw = String(value || "").trim();
@@ -853,6 +941,7 @@
       instrumentalUrl: $("instrumentalUrl").value.trim(),
       lyricVideoUrl: $("lyricVideoUrl").value.trim(),
       lyrics: $("lyricsInput").value.trim(),
+      phraseFocus: $("phraseFocus").value.trim(),
     };
   }
 
@@ -873,6 +962,7 @@
       instrumentalUrl: "",
       lyricVideoUrl: "",
       lyrics: "",
+      phraseFocus: "",
     };
     const saved = JSON.parse(localStorage.getItem(setupKey) || "null") || fallback;
     $("songTitle").value = saved.songTitle || "";
@@ -881,6 +971,7 @@
     $("instrumentalUrl").value = saved.instrumentalUrl || "";
     $("lyricVideoUrl").value = saved.lyricVideoUrl || "";
     $("lyricsInput").value = saved.lyrics || "";
+    $("phraseFocus").value = saved.phraseFocus || "";
   }
 
   function setStep(step) {
@@ -1062,18 +1153,144 @@
     item.className = "take";
     const url = URL.createObjectURL(take.blob);
     const date = new Date(take.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    const drillBits = [take.phraseFocus, take.takeTempo].filter(Boolean);
     item.innerHTML = `
       <div>
         <strong>${escapeHtml(take.title || "Untitled take")}</strong>
         <p class="meta">${date}${take.note ? " &middot; " + escapeHtml(take.note) : ""}</p>
+        ${drillBits.length ? `<p class="drill">${escapeHtml(drillBits.join(" · "))}</p>` : ""}
       </div>
       <audio controls src="${url}"></audio>
       <div class="take-actions">
+        <button class="ghost analyze-btn" data-analyze="${escapeAttr(take.id)}">&#9835; Analyze pitch</button>
         <a download="${escapeAttr(fileNameForTake(take))}" href="${url}"><button class="ghost">Download</button></a>
         <button class="danger" data-delete="${escapeAttr(take.id)}">Delete</button>
       </div>
     `;
     return item;
+  }
+
+  async function getTake(id) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("takes", "readonly");
+      const request = tx.objectStore("takes").get(id);
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  // ---------- Pitch analysis ----------
+  function closeAnalyze() { document.body.classList.remove("analyze-open"); }
+
+  async function analyzeTake(id) {
+    const take = await getTake(id);
+    if (!take) return;
+    const videoUrl = take.originalUrl || getSetup().originalUrl;
+    const body = $("analyzeBody");
+    closePanels();
+    document.body.classList.add("analyze-open");
+
+    if (!videoUrl) {
+      body.innerHTML = `<div class="analyze-error">Add the song's <b>Original</b> YouTube link in Setup so we can build the reference melody, then try again.</div>`;
+      return;
+    }
+    body.innerHTML = `<div class="analyze-loading"><span class="spin"></span>Analyzing your pitch&hellip;<div class="sub">Isolating the original vocal and comparing note-by-note. The first time for a song can take ~30&ndash;60s.</div></div>`;
+    try {
+      const res = await fetch(
+        `/api/analyze?videoUrl=${encodeURIComponent(videoUrl)}&title=${encodeURIComponent(take.title || "")}`,
+        { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: take.blob }
+      );
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || ("server " + res.status));
+      renderAnalysis(data);
+    } catch (err) {
+      body.innerHTML = `<div class="analyze-error">${escapeHtml(err.message)}</div>`;
+    }
+  }
+
+  function renderAnalysis(data) {
+    $("analyzeBody").innerHTML = `
+      <div class="analyze-summary">
+        <div class="score-big"><span class="num">${data.score}</span><span class="pct">%</span><span class="lbl">in tune (±${data.inTuneCents}¢)</span></div>
+        <div class="analyze-stats">
+          <div>Median pitch error: <b>${data.medianCents}¢</b></div>
+          <div>Tendency: <b>${escapeHtml(data.tendency)}</b></div>
+          <div>Notes compared: <b>${data.frames}</b></div>
+        </div>
+      </div>
+      <div class="analyze-chart-wrap">
+        <canvas id="analyzeChart"></canvas>
+        <div class="analyze-legend">
+          <span><i style="background:#9b8e7c"></i>target melody</span>
+          <span><i style="background:#1aa37a"></i>you – in tune</span>
+          <span><i style="background:#ff5b4d"></i>you – off</span>
+        </div>
+      </div>`;
+    drawAnalysisChart(data);
+  }
+
+  function noteName(m) {
+    const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+    return names[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
+  }
+
+  function drawAnalysisChart(data) {
+    const canvas = $("analyzeChart");
+    const dpr = window.devicePixelRatio || 1;
+    const cssW = canvas.clientWidth || 760;
+    const cssH = 260;
+    canvas.width = cssW * dpr;
+    canvas.height = cssH * dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, cssW, cssH);
+
+    const pad = { l: 40, r: 12, t: 12, b: 22 };
+    const W = cssW - pad.l - pad.r;
+    const H = cssH - pad.t - pad.b;
+    const { times, refMidi: ref, userMidi: you, centsErr: errs } = data;
+    if (!times || !times.length) return;
+    const all = ref.concat(you).filter((v) => v != null);
+    let lo = Math.floor(Math.min(...all)) - 1;
+    let hi = Math.ceil(Math.max(...all)) + 1;
+    const t0 = times[0];
+    const t1 = times[times.length - 1] || t0 + 1;
+    const X = (t) => pad.l + W * (t - t0) / (t1 - t0 || 1);
+    const Y = (m) => pad.t + H - H * (m - lo) / (hi - lo || 1);
+
+    ctx.strokeStyle = "rgba(255,255,255,0.06)";
+    ctx.fillStyle = "#8a7e6d";
+    ctx.font = "10px ui-sans-serif, sans-serif";
+    ctx.lineWidth = 1;
+    for (let m = Math.ceil(lo); m <= hi; m++) {
+      if (m % 2) continue;
+      const yy = Y(m);
+      ctx.beginPath();
+      ctx.moveTo(pad.l, yy);
+      ctx.lineTo(cssW - pad.r, yy);
+      ctx.stroke();
+      ctx.fillText(noteName(m), 6, yy + 3);
+    }
+
+    ctx.strokeStyle = "#9b8e7c";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < times.length; i++) {
+      if (ref[i] == null) { started = false; continue; }
+      const px = X(times[i]), py = Y(ref[i]);
+      if (!started) { ctx.moveTo(px, py); started = true; } else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+
+    for (let i = 0; i < times.length; i++) {
+      if (you[i] == null) continue;
+      ctx.fillStyle = Math.abs(errs[i]) <= (data.inTuneCents || 35) ? "#1aa37a" : "#ff5b4d";
+      ctx.beginPath();
+      ctx.arc(X(times[i]), Y(you[i]), 2.2, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   async function renderTakes() {
@@ -1198,9 +1415,12 @@
       id: crypto.randomUUID(),
       title: setup.songTitle || "Singing Take",
       note: $("takeNote").value.trim(),
+      phraseFocus: setup.phraseFocus || "",
+      takeTempo: state.takeTempo,
       blob,
       createdAt: Date.now(),
       sessionId: state.sessionId,
+      originalUrl: setup.originalUrl || "",
     };
     await writeTake(take);
     $("takeNote").value = "";
@@ -1210,7 +1430,7 @@
 
   // ---------- Panels (takes drawer, history, reflection) ----------
   function closePanels() {
-    document.body.classList.remove("takes-open", "history-open", "reflect-open");
+    document.body.classList.remove("takes-open", "history-open", "reflect-open", "analyze-open");
   }
   function openDrawer() { closePanels(); document.body.classList.add("takes-open"); }
   function closeDrawer() { document.body.classList.remove("takes-open"); }
@@ -1426,14 +1646,31 @@
     for (const star of document.querySelectorAll("#reflectStars .star")) {
       star.addEventListener("click", () => setStars(Number(star.dataset.rating)));
     }
+    for (const button of document.querySelectorAll("[data-tempo]")) {
+      button.addEventListener("click", () => {
+        state.takeTempo = button.dataset.tempo;
+        for (const b of document.querySelectorAll("[data-tempo]")) {
+          b.classList.toggle("active", b === button);
+        }
+        $("takeNote").placeholder = `Note for ${state.takeTempo.toLowerCase()} take: what to improve next time?`;
+      });
+    }
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanels(); });
+    $("analyzeClose").addEventListener("click", closeAnalyze);
+    $("analyzeModal").addEventListener("click", (event) => {
+      if (event.target === $("analyzeModal")) closeAnalyze();
+    });
     $("takesList").addEventListener("click", async (event) => {
+      const analyzeBtn = event.target.closest("[data-analyze]");
+      if (analyzeBtn) { analyzeTake(analyzeBtn.dataset.analyze); return; }
       const target = event.target.closest("[data-delete]");
       if (!target) return;
       await deleteTake(target.dataset.delete);
       await renderTakes();
     });
     $("historyList").addEventListener("click", async (event) => {
+      const analyzeBtn = event.target.closest("[data-analyze]");
+      if (analyzeBtn) { analyzeTake(analyzeBtn.dataset.analyze); return; }
       const target = event.target.closest("[data-delete]");
       if (!target) return;
       await deleteTake(target.dataset.delete);

@@ -29,6 +29,9 @@ rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app"
 cp "$SRC/index.html" "$APP/Contents/Resources/app/index.html"
 cp "$SRC/server.py"  "$APP/Contents/Resources/app/server.py"
+if [ -f "$SRC/analysis.py" ]; then
+  cp "$SRC/analysis.py" "$APP/Contents/Resources/app/analysis.py"
+fi
 cp "$HERE/app.icns"  "$APP/Contents/Resources/app.icns"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
@@ -56,14 +59,22 @@ cat > "$APP/Contents/MacOS/launch" <<'SH'
 export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
 
 APP_DIR="$(cd "$(dirname "$0")/../Resources/app" && pwd)"
+SOURCE_DIR="__SOURCE_DIR__"
 PORT=4173
 URL="http://localhost:${PORT}/"
 PROFILE="$HOME/Library/Application Support/Singing Studio/chrome"
 mkdir -p "$PROFILE"
 
+PYTHON="python3"
+if [ -x "$APP_DIR/.venv/bin/python" ]; then
+  PYTHON="$APP_DIR/.venv/bin/python"
+elif [ -x "$SOURCE_DIR/.venv/bin/python" ]; then
+  PYTHON="$SOURCE_DIR/.venv/bin/python"
+fi
+
 # Start the local server if it isn't already up.
 if ! curl -s "http://127.0.0.1:${PORT}/" >/dev/null 2>&1; then
-  python3 "$APP_DIR/server.py" >/tmp/singing-studio.log 2>&1 &
+  "$PYTHON" "$APP_DIR/server.py" >/tmp/singing-studio.log 2>&1 &
   for i in $(seq 1 50); do
     curl -s "http://127.0.0.1:${PORT}/" >/dev/null 2>&1 && break
     sleep 0.2
@@ -76,6 +87,7 @@ open -na "Google Chrome" --args \
   --user-data-dir="$PROFILE" \
   --no-first-run --no-default-browser-check
 SH
+perl -0pi -e "s#__SOURCE_DIR__#${SRC//\\/\\\\}#g" "$APP/Contents/MacOS/launch"
 chmod +x "$APP/Contents/MacOS/launch"
 touch "$APP"
 

@@ -9,8 +9,10 @@ Run:  python3 server.py   (serves http://localhost:4173)
 """
 
 import json
+import os
 import re
 import subprocess
+import tempfile
 import urllib.parse
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
@@ -216,7 +218,59 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._json({"result": do_alt(query, kind, exclude)})
             except Exception as exc:  # noqa: BLE001
                 return self._json({"error": str(exc)}, 500)
+        if parsed.path == "/api/reference":
+            params = urllib.parse.parse_qs(parsed.query)
+            video_url = (params.get("videoUrl") or [""])[0].strip()
+            if not video_url:
+                return self._json({"error": "missing videoUrl"}, 400)
+            try:
+                import analysis  # lazy: heavy deps only load on demand
+            except Exception:
+                return self._json(
+                    {"error": "Pitch analysis isn't installed. Run setup.sh to enable it."}, 503
+                )
+            try:
+                ref = analysis.build_reference(video_url)
+                return self._json({
+                    "videoId": ref.get("videoId"),
+                    "times": ref.get("times") or [],
+                    "midi": ref.get("midi") or [],
+                })
+            except ValueError as exc:
+                return self._json({"error": str(exc)}, 400)
+            except Exception as exc:  # noqa: BLE001
+                return self._json({"error": f"Reference failed: {exc}"}, 500)
         return super().do_GET()
+
+    def do_POST(self):
+        parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/api/analyze":
+            params = urllib.parse.parse_qs(parsed.query)
+            video_url = (params.get("videoUrl") or [""])[0].strip()
+            length = int(self.headers.get("Content-Length") or 0)
+            body = self.rfile.read(length) if length else b""
+            if not body:
+                return self._json({"error": "No audio was uploaded."}, 400)
+            try:
+                import analysis  # lazy: heavy deps only load on demand
+            except Exception:
+                return self._json(
+                    {"error": "Pitch analysis isn't installed. Run setup.sh to enable it."}, 503
+                )
+            take_path = None
+            try:
+                with tempfile.NamedTemporaryFile(suffix=".webm", delete=False) as fh:
+                    fh.write(body)
+                    take_path = fh.name
+                return self._json(analysis.analyze(take_path, video_url))
+            except ValueError as exc:
+                return self._json({"error": str(exc)}, 400)
+            except Exception as exc:  # noqa: BLE001
+                return self._json({"error": f"Analysis failed: {exc}"}, 500)
+            finally:
+                if take_path and os.path.exists(take_path):
+                    os.remove(take_path)
+        return self._json({"error": "not found"}, 404)
 
     def _json(self, payload, status=200):
         body = json.dumps(payload).encode("utf-8")

@@ -38,6 +38,20 @@ const MOCK_SEARCH = {
   lyrics: "la la la\nsecond line\nthird line",
 };
 
+const MOCK_ANALYSIS = {
+  score: 82,
+  inTunePct: 82.1,
+  inTuneCents: 35,
+  medianCents: 18,
+  meanSignedCents: -9.4,
+  tendency: "your pitch centering is solid",
+  frames: 64,
+  times: [0, 0.5, 1, 1.5, 2, 2.5],
+  refMidi: [60, 62, 64, 65, 67, 69],
+  userMidi: [60.1, 61.8, 64.6, 64.7, 67.2, 68.4],
+  centsErr: [10, -20, 60, -30, 20, -60],
+};
+
 async function main() {
   const browser = await chromium.launch({
     args: [
@@ -59,8 +73,11 @@ async function main() {
       body: JSON.stringify({ result: { id: "zzzzzzzzzzz", url: "https://www.youtube.com/watch?v=zzzzzzzzzzz", title: "fallback take" } }),
     })
   );
+  await context.route(/\/api\/analyze(?:\?|$)/, (route) =>
+    route.fulfill({ contentType: "application/json", body: JSON.stringify(MOCK_ANALYSIS) })
+  );
   // Don't actually load YouTube (iframes or the player API).
-  await context.route(/youtube\.com/, (route) => route.abort());
+  await context.route(/^https:\/\/([^/]+\.)?youtube\.com\//, (route) => route.abort());
 
   const page = await context.newPage();
   const pageErrors = [];
@@ -137,6 +154,7 @@ async function main() {
   check("sing stage active", await page.isVisible("#stageSong.active"));
   check("transport bar visible on sing", await page.isVisible("#transportBar"));
   check("finish & reflect button visible on sing", await page.isVisible("#endSessionBtn"));
+  check("practice drill controls visible", await page.isVisible("#phraseFocus"));
 
   // --- Source tabs ---
   console.log("Source tabs");
@@ -164,6 +182,8 @@ async function main() {
 
   // --- Record / Stop ---
   console.log("Record / Stop (fake mic)");
+  await page.fill("#phraseFocus", "verse 1 line 2");
+  await page.click('[data-tempo="Medium"]');
   await page.click("#recordBtn");
   check("recording state active", await waitTrue(() => document.getElementById("transportBar").classList.contains("recording")));
   await page.waitForTimeout(1200);
@@ -176,8 +196,15 @@ async function main() {
   await page.click("#takesToggle");
   check("takes drawer opens", await page.evaluate(() => document.body.classList.contains("takes-open")));
   check("recorded take listed in drawer", (await page.locator("#takesList .take").count()) >= 1);
-  await page.click("#closeDrawer");
-  check("takes drawer closes", await page.evaluate(() => !document.body.classList.contains("takes-open")));
+  const takeText = await page.textContent("#takesList .take");
+  check("take shows phrase and tempo", takeText.includes("verse 1 line 2") && takeText.includes("Medium"));
+  await page.click("#takesList .analyze-btn");
+  check("pitch analysis modal opens", await waitTrue(() => document.body.classList.contains("analyze-open")));
+  check("pitch analysis score renders", await waitTrue(() => document.querySelector("#analyzeBody").textContent.includes("82")));
+  check("pitch analysis chart renders", await page.isVisible("#analyzeChart"));
+  await page.click("#analyzeClose");
+  check("pitch analysis modal closes", await waitTrue(() => !document.body.classList.contains("analyze-open")));
+  check("takes drawer closes behind analysis", await page.evaluate(() => !document.body.classList.contains("takes-open")));
 
   // --- Finish & reflect ---
   console.log("Finish & reflect");

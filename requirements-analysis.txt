@@ -1,0 +1,5 @@
+# Heavy deps for the optional "Analyze pitch" feature.
+# Installed into a local .venv by setup.sh; loaded lazily by server.py.
+demucs
+librosa
+soundfile
