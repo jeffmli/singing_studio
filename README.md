@@ -40,6 +40,18 @@ Then open **http://localhost:4173/**.
 > The plain page can be opened on its own, but the **song search** feature needs
 > `server.py` running (it shells out to `yt-dlp` and fetches lyrics).
 
+### Run it as a Mac app
+
+Build a double-clickable **Singing Studio.app** (installs to `/Applications`) that
+starts the server and opens the studio in its own clean window:
+
+```bash
+./mac-app/build.sh
+```
+
+It uses Google Chrome's app mode for a standalone window. Icon source and the
+build script live in [`mac-app/`](mac-app/).
+
 ## How search works
 
 `server.py` exposes `GET /api/search?q=<song>`. It runs three `yt-dlp` searches
