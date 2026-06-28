@@ -1,0 +1,1347 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Singing Practice Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #100c0a;
+    --bg-2: #15100d;
+    --panel: #1b1612;
+    --panel-2: #221b16;
+    --ink: #f6efe4;
+    --muted: #a4978450;
+    --muted-text: #ab9d89;
+    --line: rgba(255, 255, 255, 0.08);
+    --line-strong: rgba(255, 255, 255, 0.14);
+    --amber: #f5a524;
+    --amber-bright: #ffc164;
+    --amber-deep: #c97e12;
+    --rec: #ff5b4d;
+    --rec-glow: rgba(255, 91, 77, 0.45);
+    --display: "Fraunces", Georgia, serif;
+    --sans: "Spline Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+    --radius: 16px;
+    --radius-sm: 11px;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    min-height: 100%;
+    background: var(--bg);
+    color: var(--ink);
+    font: 15px/1.5 var(--sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Atmospheric stage glow + vignette */
+  body::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(900px 520px at 50% -8%, rgba(245, 165, 36, 0.18), transparent 60%),
+      radial-gradient(700px 500px at 85% 110%, rgba(245, 165, 36, 0.06), transparent 55%),
+      radial-gradient(1200px 800px at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.5) 100%);
+  }
+
+  body { position: relative; padding: 0; }
+
+  button, input, textarea { font: inherit; color: inherit; }
+
+  button {
+    border: 1px solid var(--line-strong);
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--ink);
+    border-radius: var(--radius-sm);
+    min-height: 42px;
+    padding: 10px 16px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 140ms ease, border-color 140ms ease, transform 80ms ease, color 140ms ease;
+  }
+  button:hover { background: rgba(255, 255, 255, 0.07); border-color: var(--line-strong); }
+  button:active { transform: translateY(1px); }
+  button:disabled { cursor: not-allowed; opacity: 0.4; }
+
+  .primary {
+    background: linear-gradient(180deg, var(--amber-bright), var(--amber));
+    border-color: var(--amber-deep);
+    color: #2a1903;
+    box-shadow: 0 8px 26px rgba(245, 165, 36, 0.28);
+  }
+  .primary:hover { background: linear-gradient(180deg, #ffce82, var(--amber-bright)); }
+  .ghost { background: transparent; border-color: var(--line); }
+  .danger { color: #ff8a80; border-color: rgba(255, 91, 77, 0.3); }
+  .danger:hover { background: rgba(255, 91, 77, 0.12); }
+
+  input, textarea {
+    width: 100%;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-sm);
+    background: rgba(0, 0, 0, 0.25);
+    color: var(--ink);
+    padding: 11px 13px;
+    outline: none;
+    transition: border-color 140ms ease, box-shadow 140ms ease;
+  }
+  input::placeholder, textarea::placeholder { color: #6f6557; }
+  textarea { min-height: 96px; resize: vertical; white-space: pre-wrap; line-height: 1.6; }
+  input:focus, textarea:focus {
+    border-color: var(--amber);
+    box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.16);
+  }
+
+  h1, h2, h3, p { margin: 0; }
+  .muted { color: var(--muted-text); }
+  label {
+    font-size: 11px; font-weight: 600; color: #8d8170;
+    text-transform: uppercase; letter-spacing: 0.07em;
+  }
+
+  /* ---------- Top bar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 30;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 16px;
+    padding: 14px 26px;
+    background: rgba(16, 12, 10, 0.72);
+    backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .brand { display: flex; align-items: center; gap: 11px; font-weight: 600; }
+  .brand .dot {
+    width: 11px; height: 11px; border-radius: 50%;
+    background: var(--rec);
+    box-shadow: 0 0 0 4px rgba(255, 91, 77, 0.18), 0 0 14px var(--rec-glow);
+  }
+  .brand b { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: 0.01em; }
+  .brand .tag { color: #7a6f60; font-size: 12px; padding-left: 6px; }
+
+  .stepper { display: flex; align-items: center; gap: 6px; justify-self: center; }
+  .step {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 14px; border-radius: 999px;
+    background: transparent; border: 1px solid transparent;
+    color: #8a7f6f; cursor: pointer; min-height: 0;
+    font-weight: 600; font-size: 13.5px;
+    transition: all 160ms ease;
+  }
+  .step:hover { color: var(--ink); background: rgba(255,255,255,0.04); }
+  .step .num {
+    width: 22px; height: 22px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 12px;
+    background: rgba(255,255,255,0.07); color: #b6a890;
+    border: 1px solid var(--line);
+    transition: all 160ms ease;
+  }
+  .step.current { color: var(--ink); background: rgba(245,165,36,0.12); border-color: rgba(245,165,36,0.3); }
+  .step.current .num { background: var(--amber); color: #2a1903; border-color: transparent; }
+  .step.done .num { background: rgba(245,165,36,0.18); color: var(--amber-bright); border-color: rgba(245,165,36,0.3); }
+  .step-divider { width: 16px; height: 1px; background: var(--line-strong); }
+
+  .topbar .end { justify-self: end; }
+
+  /* ---------- Stage layout ---------- */
+  main { position: relative; z-index: 1; }
+  .stage {
+    display: none;
+    width: min(1180px, 92vw);
+    margin: 0 auto;
+    padding: 40px 0 120px;
+    animation: stageIn 380ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .stage.active { display: block; }
+  @keyframes stageIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .stage-head { text-align: center; margin-bottom: 30px; }
+  .stage-eyebrow {
+    font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase;
+    color: var(--amber); font-weight: 600; margin-bottom: 12px;
+  }
+  .stage-title { font-family: var(--display); font-weight: 500; font-size: clamp(30px, 5vw, 52px); line-height: 1.02; letter-spacing: -0.01em; }
+  .stage-sub { color: var(--muted-text); margin-top: 12px; font-size: 15.5px; }
+
+  /* ---------- Card ---------- */
+  .card {
+    background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.45);
+  }
+
+  /* ---------- Setup stage ---------- */
+  .setup-card { max-width: 760px; margin: 0 auto; padding: 30px; }
+
+  /* Quick-start song search */
+  .song-search { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
+  .song-search > label { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; color: var(--amber); }
+  .search-row { display: flex; gap: 10px; }
+  .search-row input { flex: 1; min-height: 50px; font-size: 16px; }
+  .search-row .primary { min-height: 50px; padding: 0 24px; white-space: nowrap; }
+  .search-status { margin-top: 11px; font-size: 13px; min-height: 17px; }
+  .search-status.error { color: #ff8a80; }
+  .search-status.ok { color: var(--amber-bright); }
+  .spin {
+    display: inline-block; width: 14px; height: 14px; border-radius: 50%;
+    border: 2px solid rgba(255,255,255,0.25); border-top-color: var(--amber-bright);
+    animation: spin 0.7s linear infinite; vertical-align: -2px; margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes fieldFlash {
+    0% { box-shadow: 0 0 0 3px rgba(245,165,36,0.55); border-color: var(--amber); }
+    100% { box-shadow: 0 0 0 3px rgba(245,165,36,0); }
+  }
+  .field.flash input, .field.flash textarea { animation: fieldFlash 1.2s ease; border-color: var(--amber); }
+
+  .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
+  .setup-section h3 {
+    font-family: var(--display); font-weight: 600; font-size: 19px; margin-bottom: 4px;
+  }
+  .setup-section .hint { color: #8a7e6d; font-size: 13px; margin-bottom: 16px; }
+  .field { display: grid; gap: 7px; margin-bottom: 15px; }
+  .setup-actions {
+    display: flex; gap: 12px; justify-content: flex-end;
+    margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--line);
+  }
+
+  /* ---------- Player frame ---------- */
+  .player-shell { position: relative; }
+  .player-shell::after {
+    content: ""; position: absolute; inset: -22px -22px 6px;
+    background: radial-gradient(60% 70% at 50% 40%, rgba(245,165,36,0.22), transparent 70%);
+    filter: blur(6px); z-index: -1; pointer-events: none;
+  }
+  .player-frame {
+    position: relative; aspect-ratio: 16 / 9; width: 100%;
+    background: #060504; border-radius: var(--radius); overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .player-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
+  .placeholder {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    padding: 28px; text-align: center; color: #b9ac98;
+    background: radial-gradient(120% 120% at 50% 0%, #211a14, #0a0807);
+  }
+  .placeholder .pi { font-size: 30px; opacity: 0.6; margin-bottom: 10px; }
+
+  /* ---------- Warmup stage ---------- */
+  .warmup-wrap { max-width: 880px; margin: 0 auto; }
+  .warmup-dots { display: flex; gap: 9px; justify-content: center; margin-bottom: 22px; }
+  .wd {
+    width: 38px; height: 5px; border-radius: 999px;
+    background: rgba(255,255,255,0.1); transition: all 220ms ease;
+  }
+  .wd.done { background: rgba(245,165,36,0.5); }
+  .wd.on { background: var(--amber); box-shadow: 0 0 12px rgba(245,165,36,0.6); }
+  .warmup-controls {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    margin-top: 26px;
+  }
+  .warmup-controls .spacer { flex: 0 0 18px; }
+  .warmup-controls .primary { padding: 12px 26px; }
+
+  /* ---------- Sing stage ---------- */
+  .sing-grid { }
+  .sing-top {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 16px; margin-bottom: 18px; flex-wrap: wrap;
+  }
+  .song-name { font-family: var(--display); font-weight: 500; font-size: clamp(22px, 3vw, 32px); }
+
+  .segmented {
+    display: inline-flex; padding: 4px; gap: 2px;
+    background: rgba(0,0,0,0.3); border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+  .segmented button {
+    border: none; background: transparent; min-height: 34px; padding: 7px 15px;
+    border-radius: 999px; font-size: 13.5px; color: #9b8e7c; box-shadow: none;
+  }
+  .segmented button:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
+  .segmented button.active {
+    background: rgba(245,165,36,0.16); color: var(--amber-bright);
+    border: 1px solid rgba(245,165,36,0.3);
+  }
+
+  .lyrics-view {
+    min-height: 360px; aspect-ratio: 16 / 9;
+    overflow: auto; white-space: pre-wrap;
+    background: linear-gradient(180deg, #1a1511, #120e0b);
+    border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius);
+    padding: 30px 34px; font-size: 19px; line-height: 1.85; color: #ede4d5;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    font-family: var(--display); font-weight: 400;
+  }
+
+  /* ---------- Transport bar (recorder) ---------- */
+  .transport-bar {
+    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
+    z-index: 40; width: min(940px, 92vw);
+    display: none; align-items: center; gap: 16px;
+    padding: 12px 14px 12px 18px;
+    background: rgba(28, 22, 18, 0.86);
+    backdrop-filter: blur(16px);
+    border: 1px solid var(--line-strong);
+    border-radius: 18px;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
+  }
+  body.on-sing .transport-bar { display: flex; animation: stageIn 400ms ease; }
+
+  .rec-btn {
+    display: inline-flex; align-items: center; gap: 10px;
+    background: var(--rec); border-color: #c93a2e; color: #fff; font-weight: 600;
+    box-shadow: 0 8px 24px var(--rec-glow); min-height: 46px; padding: 11px 20px;
+  }
+  .rec-btn:hover { background: #ff6f63; }
+  .rec-btn .ring {
+    width: 13px; height: 13px; border-radius: 50%; background: #fff;
+  }
+  .stop-btn {
+    display: inline-flex; align-items: center; gap: 9px;
+    min-height: 46px; padding: 11px 20px;
+  }
+  .stop-btn .sq { width: 12px; height: 12px; border-radius: 3px; background: var(--rec); }
+
+  .transport-bar.recording .rec-btn { display: none; }
+  .transport-bar:not(.recording) .stop-btn { display: none; }
+  .transport-bar:not(.recording) .rec-timer { display: none; }
+  .transport-bar:not(.recording) .meter-wrap { opacity: 0.4; }
+
+  .rec-timer {
+    font-variant-numeric: tabular-nums; font-weight: 600; font-size: 17px;
+    color: var(--rec); min-width: 56px;
+    display: inline-flex; align-items: center; gap: 9px;
+  }
+  .rec-timer .pulse {
+    width: 10px; height: 10px; border-radius: 50%; background: var(--rec);
+    animation: pulse 1s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--rec-glow); }
+    50% { opacity: 0.5; box-shadow: 0 0 0 7px rgba(255,91,77,0); }
+  }
+
+  .meter-wrap { flex: 1; min-width: 80px; transition: opacity 160ms ease; }
+  .meter {
+    height: 8px; background: rgba(0,0,0,0.4); border-radius: 999px; overflow: hidden;
+    border: 1px solid var(--line);
+  }
+  .meter span {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--amber), var(--amber-bright));
+    transition: width 90ms linear;
+  }
+  .take-note-input { flex: 1.4; min-width: 120px; }
+  .take-note-input input { min-height: 46px; }
+
+  .takes-toggle {
+    display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
+    min-height: 46px;
+  }
+  .badge {
+    display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
+    border-radius: 999px; background: var(--amber); color: #2a1903;
+    font-size: 12px; font-weight: 700;
+  }
+  .badge.zero { background: rgba(255,255,255,0.12); color: #9b8e7c; }
+
+  .rec-status {
+    position: fixed; left: 50%; bottom: 82px; transform: translateX(-50%);
+    z-index: 39; font-size: 13px; color: #b6a890; display: none;
+    background: rgba(28,22,18,0.8); padding: 6px 14px; border-radius: 999px;
+    border: 1px solid var(--line); backdrop-filter: blur(8px);
+  }
+  body.on-sing .rec-status { display: block; }
+
+  /* ---------- Takes drawer ---------- */
+  .overlay {
+    position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.5);
+    opacity: 0; pointer-events: none; transition: opacity 240ms ease;
+    backdrop-filter: blur(2px);
+  }
+  .drawer {
+    position: fixed; top: 0; right: 0; z-index: 51; height: 100%;
+    width: min(420px, 92vw);
+    background: linear-gradient(180deg, var(--panel-2), var(--bg-2));
+    border-left: 1px solid var(--line-strong);
+    box-shadow: -30px 0 80px rgba(0,0,0,0.6);
+    transform: translateX(100%); transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
+    display: flex; flex-direction: column;
+  }
+  .drawer.wide { width: min(540px, 96vw); }
+  body.takes-open .overlay, body.history-open .overlay, body.reflect-open .overlay { opacity: 1; pointer-events: auto; }
+  body.takes-open #takesDrawer { transform: translateX(0); }
+  body.history-open #historyDrawer { transform: translateX(0); }
+  .drawer-head {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 22px 16px; border-bottom: 1px solid var(--line);
+  }
+  .drawer-head h2 { font-family: var(--display); font-weight: 600; font-size: 22px; }
+  .drawer-head .x { min-height: 36px; padding: 6px 12px; }
+  .drawer-body { padding: 18px 22px 30px; overflow: auto; display: grid; gap: 14px; }
+
+  .take {
+    display: grid; gap: 11px; padding: 16px;
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: rgba(0,0,0,0.22);
+  }
+  .take strong { font-family: var(--display); font-weight: 500; font-size: 16px; }
+  .take .meta { color: #97897680; }
+  .take .meta { color: #978976; font-size: 12.5px; margin-top: 2px; }
+  .take audio { width: 100%; height: 36px; }
+  .take-actions { display: flex; gap: 8px; }
+  .take-actions a { text-decoration: none; flex: 1; }
+  .take-actions button { width: 100%; min-height: 38px; padding: 8px 12px; }
+  .empty-takes { color: #8a7e6d; text-align: center; padding: 30px 10px; }
+
+  /* ---------- Top-bar contextual button ---------- */
+  .on-sing-only { display: none; }
+  body.on-sing .on-sing-only { display: inline-flex; }
+
+  /* ---------- History cards ---------- */
+  .session-card {
+    border: 1px solid var(--line); border-radius: var(--radius-sm);
+    background: rgba(0,0,0,0.22); overflow: hidden;
+  }
+  .session-card > summary {
+    list-style: none; cursor: pointer; padding: 15px 16px;
+    display: grid; gap: 6px;
+  }
+  .session-card > summary::-webkit-details-marker { display: none; }
+  .session-card .sc-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+  .session-card .sc-song { font-family: var(--display); font-weight: 500; font-size: 17px; }
+  .session-card .sc-date { color: #978976; font-size: 12.5px; white-space: nowrap; }
+  .session-card .sc-stars { color: var(--amber); letter-spacing: 2px; font-size: 14px; }
+  .session-card .sc-stars .off { color: rgba(255,255,255,0.16); }
+  .session-card .sc-meta { color: #8a7e6d; font-size: 12.5px; }
+  .session-card .sc-reflect { display: grid; gap: 7px; padding: 0 16px 14px; }
+  .session-card .sc-reflect .r { font-size: 13.5px; }
+  .session-card .sc-reflect .r b { color: var(--amber-bright); font-weight: 600; }
+  .session-card .sc-takes { border-top: 1px solid var(--line); padding: 14px 16px; display: grid; gap: 12px; }
+  .session-card .sc-takes .take { padding: 12px; }
+
+  /* ---------- Reflection modal ---------- */
+  .modal-wrap {
+    position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
+    padding: 20px; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
+  }
+  body.reflect-open .modal-wrap { opacity: 1; pointer-events: auto; }
+  .modal {
+    width: min(520px, 100%); padding: 28px; display: grid; gap: 16px;
+    transform: translateY(14px) scale(0.98); transition: transform 240ms cubic-bezier(0.22,1,0.36,1);
+  }
+  body.reflect-open .modal { transform: translateY(0) scale(1); }
+  .modal h2 { font-family: var(--display); font-weight: 600; font-size: 26px; }
+  .modal .field { margin: 0; gap: 8px; }
+  .modal textarea { min-height: 70px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
+
+  .stars { display: flex; gap: 6px; }
+  .stars .star {
+    border: none; background: transparent; box-shadow: none;
+    font-size: 30px; line-height: 1; padding: 2px 4px; min-height: 0;
+    color: rgba(255,255,255,0.18); transition: color 120ms ease, transform 100ms ease;
+  }
+  .stars .star:hover { transform: scale(1.12); background: transparent; }
+  .stars .star.lit { color: var(--amber); }
+
+  /* ---------- Toast ---------- */
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px);
+    z-index: 70; background: var(--amber); color: #2a1903; font-weight: 600;
+    padding: 12px 20px; border-radius: 12px; box-shadow: 0 16px 40px rgba(245,165,36,0.3);
+    opacity: 0; pointer-events: none; transition: opacity 240ms ease, transform 240ms ease;
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  .hidden { display: none !important; }
+
+  /* ---------- Responsive ---------- */
+  @media (max-width: 820px) {
+    .topbar { grid-template-columns: 1fr auto; padding: 12px 16px; }
+    .stepper { display: none; }
+    .setup-grid { grid-template-columns: 1fr; }
+    .transport-bar { flex-wrap: wrap; }
+    .take-note-input { order: 5; flex: 1 1 100%; }
+  }
+</style>
+</head>
+<body class="on-setup">
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <b>Singing Studio</b>
+      <span class="tag">self-guided practice</span>
+    </div>
+    <nav class="stepper" aria-label="Practice progress">
+      <button class="step current" id="stepSetup" data-step="setup"><span class="num">1</span>Setup</button>
+      <span class="step-divider"></span>
+      <button class="step" id="stepWarmups" data-step="warmups"><span class="num">2</span>Warmups</button>
+      <span class="step-divider"></span>
+      <button class="step" id="stepSong" data-step="song"><span class="num">3</span>Sing</button>
+    </nav>
+    <div class="end">
+      <button class="primary on-sing-only" id="endSessionBtn">Finish &amp; reflect</button>
+      <button class="ghost" id="historyBtn">&#9719; History</button>
+      <button class="ghost" id="editSetup">&#9881; Setup</button>
+    </div>
+  </header>
+
+  <main>
+    <!-- STAGE 1: SETUP -->
+    <section id="stageSetup" class="stage active">
+      <div class="stage-head">
+        <div class="stage-eyebrow">Step One</div>
+        <h1 class="stage-title">Set up your session</h1>
+        <p class="stage-sub">Paste your links and lyrics once. Everything is saved in this browser.</p>
+      </div>
+      <div class="card setup-card">
+        <div class="song-search">
+          <label for="songSearch">&#9889; Quick start &mdash; search a song</label>
+          <div class="search-row">
+            <input id="songSearch" placeholder="e.g. Adele - Hello" autocomplete="off" />
+            <button id="searchBtn" class="primary">Search</button>
+          </div>
+          <p id="searchStatus" class="search-status muted">Type a song and we'll find the videos and lyrics for you.</p>
+        </div>
+        <div class="setup-grid">
+          <div class="setup-section">
+            <h3>The Song</h3>
+            <p class="hint">What you're practicing today.</p>
+            <div class="field">
+              <label for="songTitle">Song title</label>
+              <input id="songTitle" placeholder="e.g. Fly Me to the Moon" />
+            </div>
+            <div class="field">
+              <label for="originalUrl">Original song (YouTube)</label>
+              <input id="originalUrl" placeholder="https://youtube.com/watch?v=..." />
+            </div>
+            <div class="field">
+              <label for="instrumentalUrl">Instrumental / karaoke</label>
+              <input id="instrumentalUrl" placeholder="https://youtube.com/watch?v=..." />
+            </div>
+            <div class="field">
+              <label for="lyricVideoUrl">Lyric video (optional)</label>
+              <input id="lyricVideoUrl" placeholder="https://youtube.com/watch?v=..." />
+            </div>
+          </div>
+          <div class="setup-section">
+            <h3>Lyrics &amp; Warmups</h3>
+            <p class="hint">Your words on screen, your vocal warmups queued up.</p>
+            <div class="field">
+              <label for="lyricsInput">Lyrics</label>
+              <textarea id="lyricsInput" placeholder="Paste the lyrics here..."></textarea>
+            </div>
+            <div class="field">
+              <label for="warmupLinks">Warmup videos (one URL per line)</label>
+              <textarea id="warmupLinks" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="setup-actions">
+          <button id="saveSetup" class="ghost">Save</button>
+          <button id="startSession" class="primary">Start Session &rarr;</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 2: WARMUPS -->
+    <section id="stageWarmups" class="stage">
+      <div class="stage-head">
+        <div class="stage-eyebrow">Step Two</div>
+        <h1 class="stage-title">Warm up your voice</h1>
+        <p class="stage-sub" id="warmupStatus">Start a session to begin warmups.</p>
+      </div>
+      <div class="warmup-wrap">
+        <div class="warmup-dots" id="warmupDots"></div>
+        <div class="player-shell">
+          <div class="player-frame">
+            <iframe id="warmupFrame" title="Warmup YouTube player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            <div id="warmupPlaceholder" class="placeholder"><div><div class="pi">&#9835;</div>Add warmup videos in Setup, then press Start Session.</div></div>
+          </div>
+        </div>
+        <div class="warmup-controls">
+          <button id="prevWarmup" class="ghost">&larr; Previous</button>
+          <button id="nextWarmup" class="ghost">Next &rarr;</button>
+          <span class="spacer"></span>
+          <button id="finishWarmups" class="primary">I'm warmed up &rarr;</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- STAGE 3: SING -->
+    <section id="stageSong" class="stage">
+      <div class="sing-grid">
+        <div class="sing-top">
+          <div class="song-name" id="songHeading">Song Practice</div>
+          <div class="segmented" role="tablist" aria-label="Source">
+            <button class="active" data-tab="original">Original</button>
+            <button data-tab="instrumental">Instrumental</button>
+            <button data-tab="lyricVideo">Lyric Video</button>
+            <button data-tab="lyrics">Lyrics</button>
+          </div>
+        </div>
+        <div class="player-shell">
+          <div id="videoPane" class="player-frame">
+            <iframe id="songFrame" title="Song YouTube player" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe>
+            <div id="songPlaceholder" class="placeholder"><div><div class="pi">&#9836;</div>Add a YouTube link for this source in Setup.</div></div>
+          </div>
+          <div id="lyricsPane" class="lyrics-view hidden"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Transport bar (only on Sing) -->
+  <div class="rec-status" id="recordingStatus">Microphone is idle.</div>
+  <div class="transport-bar" id="transportBar">
+    <button id="recordBtn" class="rec-btn"><span class="ring"></span>Record take</button>
+    <button id="stopBtn" class="stop-btn" disabled><span class="sq"></span>Stop</button>
+    <span class="rec-timer" id="recTimer"><span class="pulse"></span>0:00</span>
+    <div class="meter-wrap"><div class="meter" aria-label="Input level"><span id="meterBar"></span></div></div>
+    <div class="take-note-input"><input id="takeNote" placeholder="Note: what to improve next time?" /></div>
+    <button id="takesToggle" class="ghost takes-toggle">Your takes <span class="badge zero" id="takesCount">0</span></button>
+  </div>
+
+  <!-- Takes drawer -->
+  <div class="overlay" id="drawerOverlay"></div>
+  <aside class="drawer" id="takesDrawer" aria-label="Recorded takes">
+    <div class="drawer-head">
+      <div>
+        <h2>This session</h2>
+        <p class="muted" style="font-size:12.5px;margin-top:2px;">Takes you've recorded today</p>
+      </div>
+      <button class="ghost x" id="closeDrawer">Close</button>
+    </div>
+    <div id="takesList" class="drawer-body"></div>
+  </aside>
+
+  <!-- History drawer -->
+  <aside class="drawer wide" id="historyDrawer" aria-label="Practice history">
+    <div class="drawer-head">
+      <div>
+        <h2>Practice history</h2>
+        <p class="muted" style="font-size:12.5px;margin-top:2px;">Your saved sessions</p>
+      </div>
+      <button class="ghost x" id="closeHistory">Close</button>
+    </div>
+    <div id="historyList" class="drawer-body"></div>
+  </aside>
+
+  <!-- Reflection modal -->
+  <div class="modal-wrap" id="reflectModal" aria-label="Session reflection">
+    <div class="modal card">
+      <h2>How was that session?</h2>
+      <p class="muted" id="reflectSummary">A quick reflection helps you improve.</p>
+
+      <div class="field">
+        <label>How did it feel?</label>
+        <div class="stars" id="reflectStars" role="radiogroup" aria-label="Session rating">
+          <button type="button" class="star" data-rating="1" aria-label="1 star">&#9733;</button>
+          <button type="button" class="star" data-rating="2" aria-label="2 stars">&#9733;</button>
+          <button type="button" class="star" data-rating="3" aria-label="3 stars">&#9733;</button>
+          <button type="button" class="star" data-rating="4" aria-label="4 stars">&#9733;</button>
+          <button type="button" class="star" data-rating="5" aria-label="5 stars">&#9733;</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="reflectWins">What went well?</label>
+        <textarea id="reflectWins" placeholder="e.g. nailed the bridge, breath control felt steady..."></textarea>
+      </div>
+      <div class="field">
+        <label for="reflectFocus">What to focus on next time?</label>
+        <textarea id="reflectFocus" placeholder="e.g. the high note in the chorus, pacing on verse 2..."></textarea>
+      </div>
+
+      <div class="modal-actions">
+        <button class="ghost" id="reflectCancel">Cancel</button>
+        <button class="primary" id="reflectSave">Save session</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  const setupKey = "singing-practice-setup-v1";
+  const sessionKey = "singing-practice-current-session-v1";
+  const dbName = "singing-practice-recordings";
+  const dbVersion = 2;
+  const state = {
+    step: "setup",
+    warmupIndex: 0,
+    activeTab: "original",
+    mediaRecorder: null,
+    audioChunks: [],
+    audioStream: null,
+    audioContext: null,
+    meterAnimation: 0,
+    recordStart: 0,
+    timerInterval: 0,
+    sessionId: null,
+    sessionStartedAt: 0,
+    reflectRating: 0,
+  };
+
+  const $ = (id) => document.getElementById(id);
+  const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput"];
+
+  function parseYouTubeId(value) {
+    const raw = String(value || "").trim();
+    if (!raw) return "";
+    try {
+      const url = new URL(raw);
+      if (url.hostname.includes("youtu.be")) return url.pathname.split("/").filter(Boolean)[0] || "";
+      if (url.searchParams.get("v")) return url.searchParams.get("v");
+      const parts = url.pathname.split("/").filter(Boolean);
+      const markers = ["embed", "shorts", "live"];
+      const marker = parts.findIndex((part) => markers.includes(part));
+      return marker >= 0 ? parts[marker + 1] || "" : "";
+    } catch {
+      return raw.length === 11 ? raw : "";
+    }
+  }
+
+  function embedUrl(value) {
+    const id = parseYouTubeId(value);
+    return id ? `https://www.youtube.com/embed/${encodeURIComponent(id)}` : "";
+  }
+
+  function getSetup() {
+    return {
+      songTitle: $("songTitle").value.trim(),
+      warmups: $("warmupLinks").value.split(/\n+/).map((line) => line.trim()).filter(Boolean),
+      originalUrl: $("originalUrl").value.trim(),
+      instrumentalUrl: $("instrumentalUrl").value.trim(),
+      lyricVideoUrl: $("lyricVideoUrl").value.trim(),
+      lyrics: $("lyricsInput").value.trim(),
+    };
+  }
+
+  function saveSetup() {
+    localStorage.setItem(setupKey, JSON.stringify(getSetup()));
+    setRecordingStatus("Setup saved.");
+    render();
+  }
+
+  function loadSetup() {
+    const fallback = {
+      songTitle: "Practice Song",
+      warmups: [
+        "https://www.youtube.com/watch?v=3eT2NoTYwNA",
+        "https://www.youtube.com/watch?v=ck1pzgy07ZU"
+      ],
+      originalUrl: "",
+      instrumentalUrl: "",
+      lyricVideoUrl: "",
+      lyrics: "",
+    };
+    const saved = JSON.parse(localStorage.getItem(setupKey) || "null") || fallback;
+    $("songTitle").value = saved.songTitle || "";
+    $("warmupLinks").value = (saved.warmups || []).join("\n");
+    $("originalUrl").value = saved.originalUrl || "";
+    $("instrumentalUrl").value = saved.instrumentalUrl || "";
+    $("lyricVideoUrl").value = saved.lyricVideoUrl || "";
+    $("lyricsInput").value = saved.lyrics || "";
+  }
+
+  function setStep(step) {
+    state.step = step;
+    render();
+  }
+
+  // ---------- Session lifecycle ----------
+  function persistCurrentSession() {
+    localStorage.setItem(sessionKey, JSON.stringify({
+      sessionId: state.sessionId,
+      sessionStartedAt: state.sessionStartedAt,
+    }));
+  }
+
+  function ensureSession() {
+    const saved = JSON.parse(localStorage.getItem(sessionKey) || "null");
+    if (saved && saved.sessionId) {
+      state.sessionId = saved.sessionId;
+      state.sessionStartedAt = saved.sessionStartedAt || Date.now();
+    } else {
+      startNewSession();
+    }
+  }
+
+  function startNewSession() {
+    state.sessionId = crypto.randomUUID();
+    state.sessionStartedAt = Date.now();
+    persistCurrentSession();
+  }
+
+  function setRecordingStatus(message) {
+    $("recordingStatus").textContent = message;
+  }
+
+  function setFrame(frame, placeholder, url) {
+    const src = embedUrl(url);
+    if (frame.src !== src) frame.src = src;
+    placeholder.classList.toggle("hidden", Boolean(src));
+  }
+
+  function clearFrame(frame, placeholder) {
+    if (frame.src) frame.src = "";
+    if (placeholder) placeholder.classList.remove("hidden");
+  }
+
+  function renderStages() {
+    const map = { setup: "stageSetup", warmups: "stageWarmups", song: "stageSong" };
+    for (const [key, id] of Object.entries(map)) {
+      $(id).classList.toggle("active", state.step === key);
+    }
+    // Stepper state
+    const order = ["setup", "warmups", "song"];
+    const current = order.indexOf(state.step);
+    [["stepSetup", 0], ["stepWarmups", 1], ["stepSong", 2]].forEach(([id, idx]) => {
+      const el = $(id);
+      el.classList.toggle("current", idx === current);
+      el.classList.toggle("done", idx < current);
+    });
+    // Body mode for transport bar visibility
+    document.body.classList.toggle("on-setup", state.step === "setup");
+    document.body.classList.toggle("on-warmups", state.step === "warmups");
+    document.body.classList.toggle("on-sing", state.step === "song");
+  }
+
+  function renderWarmups(setup) {
+    const total = setup.warmups.length;
+    if (state.warmupIndex >= total) state.warmupIndex = Math.max(0, total - 1);
+    $("warmupStatus").textContent = total
+      ? `Exercise ${state.warmupIndex + 1} of ${total} — take your time.`
+      : "Add warmup videos in Setup to begin.";
+
+    const dots = $("warmupDots");
+    dots.innerHTML = "";
+    for (let i = 0; i < total; i++) {
+      const d = document.createElement("span");
+      d.className = "wd" + (i === state.warmupIndex ? " on" : i < state.warmupIndex ? " done" : "");
+      dots.appendChild(d);
+    }
+
+    if (state.step === "warmups") {
+      setFrame($("warmupFrame"), $("warmupPlaceholder"), setup.warmups[state.warmupIndex] || "");
+    } else {
+      clearFrame($("warmupFrame"), $("warmupPlaceholder"));
+    }
+    $("prevWarmup").disabled = state.warmupIndex <= 0;
+    $("nextWarmup").disabled = state.warmupIndex >= total - 1;
+  }
+
+  function renderSong(setup) {
+    $("songHeading").textContent = setup.songTitle ? setup.songTitle : "Song Practice";
+    $("lyricsPane").textContent = setup.lyrics || "Paste lyrics in Setup to see them here.";
+    for (const button of document.querySelectorAll("[data-tab]")) {
+      button.classList.toggle("active", button.dataset.tab === state.activeTab);
+    }
+
+    const showLyrics = state.activeTab === "lyrics";
+    $("videoPane").classList.toggle("hidden", showLyrics);
+    $("lyricsPane").classList.toggle("hidden", !showLyrics);
+
+    const videoMap = {
+      original: setup.originalUrl,
+      instrumental: setup.instrumentalUrl,
+      lyricVideo: setup.lyricVideoUrl,
+    };
+    if (state.step === "song" && !showLyrics) {
+      setFrame($("songFrame"), $("songPlaceholder"), videoMap[state.activeTab] || "");
+    } else {
+      clearFrame($("songFrame"), $("songPlaceholder"));
+    }
+  }
+
+  function render() {
+    const setup = getSetup();
+    localStorage.setItem(setupKey, JSON.stringify(setup));
+    renderStages();
+    renderWarmups(setup);
+    renderSong(setup);
+  }
+
+  function openDb() {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.open(dbName, dbVersion);
+      request.onupgradeneeded = () => {
+        const db = request.result;
+        if (!db.objectStoreNames.contains("takes")) {
+          db.createObjectStore("takes", { keyPath: "id" });
+        }
+        if (!db.objectStoreNames.contains("sessions")) {
+          db.createObjectStore("sessions", { keyPath: "id" });
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function writeTake(take) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("takes", "readwrite");
+      tx.objectStore("takes").put(take);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function readTakes() {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("takes", "readonly");
+      const request = tx.objectStore("takes").getAll();
+      request.onsuccess = () => resolve(request.result.sort((a, b) => b.createdAt - a.createdAt));
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  async function deleteTake(id) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("takes", "readwrite");
+      tx.objectStore("takes").delete(id);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function writeSession(session) {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("sessions", "readwrite");
+      tx.objectStore("sessions").put(session);
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  }
+
+  async function readSessions() {
+    const db = await openDb();
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction("sessions", "readonly");
+      const request = tx.objectStore("sessions").getAll();
+      request.onsuccess = () => resolve(request.result.sort((a, b) => b.endedAt - a.endedAt));
+      request.onerror = () => reject(request.error);
+    });
+  }
+
+  function buildTakeEl(take) {
+    const item = document.createElement("article");
+    item.className = "take";
+    const url = URL.createObjectURL(take.blob);
+    const date = new Date(take.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+    item.innerHTML = `
+      <div>
+        <strong>${escapeHtml(take.title || "Untitled take")}</strong>
+        <p class="meta">${date}${take.note ? " &middot; " + escapeHtml(take.note) : ""}</p>
+      </div>
+      <audio controls src="${url}"></audio>
+      <div class="take-actions">
+        <a download="${escapeAttr(fileNameForTake(take))}" href="${url}"><button class="ghost">Download</button></a>
+        <button class="danger" data-delete="${escapeAttr(take.id)}">Delete</button>
+      </div>
+    `;
+    return item;
+  }
+
+  async function renderTakes() {
+    const list = $("takesList");
+    const all = await readTakes();
+    const takes = all.filter((take) => take.sessionId === state.sessionId);
+
+    const badge = $("takesCount");
+    badge.textContent = takes.length;
+    badge.classList.toggle("zero", takes.length === 0);
+
+    list.innerHTML = "";
+    if (!takes.length) {
+      list.innerHTML = "<p class=\"empty-takes\">No takes yet this session.<br>Record one while you sing.</p>";
+      return;
+    }
+    for (const take of takes) list.appendChild(buildTakeEl(take));
+  }
+
+  function escapeHtml(value) {
+    return String(value).replace(/[&<>"']/g, (char) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#039;",
+    }[char]));
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value).replace(/`/g, "&#096;");
+  }
+
+  function fileNameForTake(take) {
+    const safeTitle = String(take.title || "singing-take").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+    return `${safeTitle || "singing-take"}-${new Date(take.createdAt).toISOString().replace(/[:.]/g, "-")}.webm`;
+  }
+
+  function updateMeter(stream) {
+    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+    if (!AudioContextClass) return;
+    state.audioContext = new AudioContextClass();
+    const source = state.audioContext.createMediaStreamSource(stream);
+    const analyser = state.audioContext.createAnalyser();
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    source.connect(analyser);
+
+    const tick = () => {
+      analyser.getByteFrequencyData(data);
+      const peak = data.reduce((max, value) => Math.max(max, value), 0);
+      $("meterBar").style.width = `${Math.min(100, Math.round((peak / 255) * 100))}%`;
+      state.meterAnimation = requestAnimationFrame(tick);
+    };
+    tick();
+  }
+
+  function formatTime(totalSeconds) {
+    const m = Math.floor(totalSeconds / 60);
+    const s = totalSeconds % 60;
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  function startTimer() {
+    state.recordStart = Date.now();
+    const update = () => {
+      const secs = Math.floor((Date.now() - state.recordStart) / 1000);
+      $("recTimer").lastChild.textContent = formatTime(secs);
+    };
+    update();
+    state.timerInterval = setInterval(update, 250);
+  }
+
+  function stopTimer() {
+    clearInterval(state.timerInterval);
+    state.timerInterval = 0;
+  }
+
+  async function startRecording() {
+    if (!navigator.mediaDevices || !window.MediaRecorder) {
+      setRecordingStatus("Recording is not supported in this browser.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      state.audioStream = stream;
+      state.audioChunks = [];
+      state.mediaRecorder = new MediaRecorder(stream);
+      state.mediaRecorder.ondataavailable = (event) => {
+        if (event.data && event.data.size) state.audioChunks.push(event.data);
+      };
+      state.mediaRecorder.onstop = saveRecording;
+      state.mediaRecorder.start();
+      $("recordBtn").disabled = true;
+      $("stopBtn").disabled = false;
+      $("transportBar").classList.add("recording");
+      setRecordingStatus("Recording now — sing your take, then press Stop.");
+      startTimer();
+      updateMeter(stream);
+    } catch (error) {
+      setRecordingStatus(`Microphone unavailable: ${error.message}`);
+    }
+  }
+
+  async function stopRecording() {
+    if (state.mediaRecorder && state.mediaRecorder.state !== "inactive") {
+      state.mediaRecorder.stop();
+    }
+    $("recordBtn").disabled = false;
+    $("stopBtn").disabled = true;
+    $("transportBar").classList.remove("recording");
+    stopTimer();
+    if (state.meterAnimation) cancelAnimationFrame(state.meterAnimation);
+    $("meterBar").style.width = "0%";
+    if (state.audioContext) await state.audioContext.close();
+    if (state.audioStream) state.audioStream.getTracks().forEach((track) => track.stop());
+  }
+
+  async function saveRecording() {
+    const setup = getSetup();
+    const blob = new Blob(state.audioChunks, { type: "audio/webm" });
+    const take = {
+      id: crypto.randomUUID(),
+      title: setup.songTitle || "Singing Take",
+      note: $("takeNote").value.trim(),
+      blob,
+      createdAt: Date.now(),
+      sessionId: state.sessionId,
+    };
+    await writeTake(take);
+    $("takeNote").value = "";
+    setRecordingStatus("Take saved. Open “This session” to review or download.");
+    await renderTakes();
+  }
+
+  // ---------- Panels (takes drawer, history, reflection) ----------
+  function closePanels() {
+    document.body.classList.remove("takes-open", "history-open", "reflect-open");
+  }
+  function openDrawer() { closePanels(); document.body.classList.add("takes-open"); }
+  function closeDrawer() { document.body.classList.remove("takes-open"); }
+
+  async function openHistory() {
+    await renderHistory();
+    closePanels();
+    document.body.classList.add("history-open");
+  }
+  function closeHistory() { document.body.classList.remove("history-open"); }
+
+  function starsMarkup(rating) {
+    let out = "";
+    for (let i = 1; i <= 5; i++) out += `<span class="${i <= rating ? "" : "off"}">&#9733;</span>`;
+    return out;
+  }
+
+  async function renderHistory() {
+    const list = $("historyList");
+    const [sessions, allTakes] = await Promise.all([readSessions(), readTakes()]);
+    const takesBySession = {};
+    for (const take of allTakes) {
+      const key = take.sessionId || "_ungrouped";
+      (takesBySession[key] = takesBySession[key] || []).push(take);
+    }
+
+    list.innerHTML = "";
+    if (!sessions.length) {
+      list.innerHTML = "<p class=\"empty-takes\">No saved sessions yet.<br>Finish a session with “Finish &amp; reflect”.</p>";
+      return;
+    }
+
+    for (const session of sessions) {
+      const takes = (takesBySession[session.id] || []).sort((a, b) => b.createdAt - a.createdAt);
+      const card = document.createElement("details");
+      card.className = "session-card";
+      const date = new Date(session.endedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
+      const mins = Math.max(1, Math.round((session.endedAt - session.startedAt) / 60000));
+      const reflectBits = [];
+      if (session.wins) reflectBits.push(`<p class="r"><b>Went well:</b> ${escapeHtml(session.wins)}</p>`);
+      if (session.focus) reflectBits.push(`<p class="r"><b>Next time:</b> ${escapeHtml(session.focus)}</p>`);
+      card.innerHTML = `
+        <summary>
+          <div class="sc-top">
+            <span class="sc-song">${escapeHtml(session.songTitle || "Practice session")}</span>
+            <span class="sc-date">${date}</span>
+          </div>
+          <div class="sc-stars">${starsMarkup(session.rating || 0)}</div>
+          <div class="sc-meta">${mins} min · ${takes.length} take${takes.length === 1 ? "" : "s"}</div>
+        </summary>
+        ${reflectBits.length ? `<div class="sc-reflect">${reflectBits.join("")}</div>` : ""}
+      `;
+      if (takes.length) {
+        const wrap = document.createElement("div");
+        wrap.className = "sc-takes";
+        for (const take of takes) wrap.appendChild(buildTakeEl(take));
+        card.appendChild(wrap);
+      }
+      list.appendChild(card);
+    }
+  }
+
+  function setStars(rating) {
+    state.reflectRating = rating;
+    for (const star of document.querySelectorAll("#reflectStars .star")) {
+      star.classList.toggle("lit", Number(star.dataset.rating) <= rating);
+    }
+  }
+
+  async function openReflect() {
+    const takes = (await readTakes()).filter((t) => t.sessionId === state.sessionId);
+    const mins = Math.max(1, Math.round((Date.now() - state.sessionStartedAt) / 60000));
+    const song = getSetup().songTitle || "this song";
+    $("reflectSummary").textContent =
+      `${song} · ${mins} min · ${takes.length} take${takes.length === 1 ? "" : "s"} recorded.`;
+    setStars(0);
+    $("reflectWins").value = "";
+    $("reflectFocus").value = "";
+    closePanels();
+    document.body.classList.add("reflect-open");
+  }
+  function closeReflect() { document.body.classList.remove("reflect-open"); }
+
+  function showToast(message) {
+    const toast = $("toast");
+    toast.textContent = message;
+    toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(() => toast.classList.remove("show"), 2800);
+  }
+
+  async function saveSession() {
+    const takes = (await readTakes()).filter((t) => t.sessionId === state.sessionId);
+    const session = {
+      id: state.sessionId,
+      songTitle: getSetup().songTitle || "Practice session",
+      startedAt: state.sessionStartedAt,
+      endedAt: Date.now(),
+      rating: state.reflectRating,
+      wins: $("reflectWins").value.trim(),
+      focus: $("reflectFocus").value.trim(),
+      takeCount: takes.length,
+    };
+    await writeSession(session);
+    startNewSession();   // fresh session for next time
+    closeReflect();
+    await renderTakes();
+    showToast("Session saved to your history ✓");
+  }
+
+  function flashField(input) {
+    const field = input.closest(".field");
+    if (!field) return;
+    field.classList.remove("flash");
+    void field.offsetWidth; // restart the animation
+    field.classList.add("flash");
+  }
+
+  function fillField(id, value) {
+    const el = $(id);
+    el.value = value || "";
+    if (value) flashField(el);
+  }
+
+  async function runSearch() {
+    const q = $("songSearch").value.trim();
+    const status = $("searchStatus");
+    if (!q) { $("songSearch").focus(); return; }
+
+    const btn = $("searchBtn");
+    btn.disabled = true;
+    status.className = "search-status muted";
+    status.innerHTML = '<span class="spin"></span>Searching YouTube + lyrics&hellip;';
+
+    try {
+      const res = await fetch("/api/search?q=" + encodeURIComponent(q));
+      if (!res.ok) throw new Error("server " + res.status);
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+
+      if (data.title) fillField("songTitle", data.title);
+      fillField("originalUrl", data.original && data.original.url);
+      fillField("instrumentalUrl", data.instrumental && data.instrumental.url);
+      fillField("lyricVideoUrl", data.lyricVideo && data.lyricVideo.url);
+      if (data.lyrics) fillField("lyricsInput", data.lyrics);
+
+      const missing = [];
+      if (!data.original) missing.push("original video");
+      if (!data.instrumental) missing.push("instrumental");
+      if (!data.lyricVideo) missing.push("lyric video");
+      if (!data.lyrics) missing.push("lyrics");
+
+      const name = data.title || q;
+      status.className = "search-status ok";
+      status.textContent = missing.length
+        ? `Filled “${name}”. Couldn’t find: ${missing.join(", ")} — add those manually if you like. Review below, then Start Session.`
+        : `Filled “${name}” — review and tweak below, then Start Session.`;
+
+      render(); // persists the filled setup
+    } catch (err) {
+      status.className = "search-status error";
+      status.textContent = "Search needs the local server (run server.py). You can still fill everything in manually below.";
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function bindEvents() {
+    $("searchBtn").addEventListener("click", runSearch);
+    $("songSearch").addEventListener("keydown", (event) => {
+      if (event.key === "Enter") { event.preventDefault(); runSearch(); }
+    });
+    $("saveSetup").addEventListener("click", saveSetup);
+    $("startSession").addEventListener("click", () => {
+      saveSetup();
+      startNewSession();
+      state.warmupIndex = 0;
+      setStep("warmups");
+      renderTakes();
+    });
+    $("editSetup").addEventListener("click", () => setStep("setup"));
+    for (const btn of document.querySelectorAll(".step[data-step]")) {
+      btn.addEventListener("click", () => setStep(btn.dataset.step));
+    }
+    $("prevWarmup").addEventListener("click", () => {
+      state.warmupIndex = Math.max(0, state.warmupIndex - 1);
+      setStep("warmups");
+    });
+    $("nextWarmup").addEventListener("click", () => {
+      state.warmupIndex += 1;
+      setStep("warmups");
+    });
+    $("finishWarmups").addEventListener("click", () => setStep("song"));
+    $("recordBtn").addEventListener("click", startRecording);
+    $("stopBtn").addEventListener("click", stopRecording);
+    $("takesToggle").addEventListener("click", openDrawer);
+    $("closeDrawer").addEventListener("click", closeDrawer);
+    $("drawerOverlay").addEventListener("click", closePanels);
+    $("historyBtn").addEventListener("click", openHistory);
+    $("closeHistory").addEventListener("click", closeHistory);
+    $("endSessionBtn").addEventListener("click", openReflect);
+    $("reflectCancel").addEventListener("click", closeReflect);
+    $("reflectSave").addEventListener("click", saveSession);
+    for (const star of document.querySelectorAll("#reflectStars .star")) {
+      star.addEventListener("click", () => setStars(Number(star.dataset.rating)));
+    }
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanels(); });
+    $("takesList").addEventListener("click", async (event) => {
+      const target = event.target.closest("[data-delete]");
+      if (!target) return;
+      await deleteTake(target.dataset.delete);
+      await renderTakes();
+    });
+    $("historyList").addEventListener("click", async (event) => {
+      const target = event.target.closest("[data-delete]");
+      if (!target) return;
+      await deleteTake(target.dataset.delete);
+      await renderHistory();
+    });
+    for (const id of fields) {
+      $(id).addEventListener("input", render);
+    }
+    for (const button of document.querySelectorAll("[data-tab]")) {
+      button.addEventListener("click", () => {
+        state.activeTab = button.dataset.tab;
+        render();
+      });
+    }
+  }
+
+  loadSetup();
+  ensureSession();
+  bindEvents();
+  render();
+  renderTakes().catch((error) => {
+    $("takesList").innerHTML = `<p class="empty-takes">Could not load takes: ${escapeHtml(error.message)}</p>`;
+  });
+})();
+</script>
+</body>
+</html>
