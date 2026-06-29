@@ -23,6 +23,7 @@ from services.search import do_search
 from services.youtube import KIND_QUERY, do_alt
 
 CANVAS_DIR = Path(__file__).resolve().parent
+WEB_DIR = CANVAS_DIR / "web"          # static UI layer (markup + css + js modules)
 HOST = "127.0.0.1"
 PORT = 4173
 
@@ -138,7 +139,7 @@ class Handler(SimpleHTTPRequestHandler):
 
 
 def main():
-    handler = partial(Handler, directory=str(CANVAS_DIR))
+    handler = partial(Handler, directory=str(WEB_DIR))
     httpd = ThreadingHTTPServer((HOST, PORT), handler)
     print(f"Singing Studio running at http://localhost:{PORT}")
     try:

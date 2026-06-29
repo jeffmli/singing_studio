@@ -27,11 +27,12 @@ iconutil -c icns "$ICONSET" -o "$HERE/app.icns"
 echo "Assembling bundle at: $APP"
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources/app"
-cp "$SRC/index.html" "$APP/Contents/Resources/app/index.html"
 cp "$SRC/server.py"  "$APP/Contents/Resources/app/server.py"
-if [ -f "$SRC/analysis.py" ]; then
-  cp "$SRC/analysis.py" "$APP/Contents/Resources/app/analysis.py"
-fi
+cp -R "$SRC/web"      "$APP/Contents/Resources/app/web"        # UI layer
+cp -R "$SRC/services" "$APP/Contents/Resources/app/services"   # backend integrations
+cp -R "$SRC/pitch"    "$APP/Contents/Resources/app/pitch"      # model
+# strip caches that may have been copied
+rm -rf "$APP/Contents/Resources/app"/*/__pycache__
 cp "$HERE/app.icns"  "$APP/Contents/Resources/app.icns"
 
 cat > "$APP/Contents/Info.plist" <<'PLIST'
