@@ -240,7 +240,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not video_url:
                 return self._json({"error": "missing videoUrl"}, 400)
             try:
-                import analysis  # lazy: heavy deps only load on demand
+                import pitch as analysis  # lazy: heavy deps only load on demand
             except Exception:
                 return self._json(
                     {"error": "Pitch analysis isn't installed. Run setup.sh to enable it."}, 503
@@ -268,7 +268,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not body:
                 return self._json({"error": "No audio was uploaded."}, 400)
             try:
-                import analysis  # lazy: heavy deps only load on demand
+                import pitch as analysis  # lazy: heavy deps only load on demand
             except Exception:
                 return self._json(
                     {"error": "Pitch analysis isn't installed. Run setup.sh to enable it."}, 503

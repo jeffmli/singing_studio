@@ -9,7 +9,7 @@ Run under the analysis venv:  .venv/bin/python test_analysis.py [vocals.wav]
 """
 import sys
 import numpy as np
-import analysis
+import pitch as analysis
 
 VOCALS = sys.argv[1] if len(sys.argv) > 1 else "/tmp/spike/vocals.wav"
 
