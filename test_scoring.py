@@ -8,7 +8,7 @@ Demucs required. Run under the analysis venv:
 """
 import numpy as np
 
-import analysis
+import pitch as analysis
 
 
 def _ref_from_midi(midi, hop=0.01):

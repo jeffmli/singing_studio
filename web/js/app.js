@@ -1,928 +1,16 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Singing Practice Studio</title>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='15' fill='%23160f0b'/%3E%3Crect x='25' y='13' width='14' height='24' rx='7' fill='%23f5a524'/%3E%3Cpath d='M21 30v3a11 11 0 0 0 22 0v-3' fill='none' stroke='%23f5a524' stroke-width='3.4' stroke-linecap='round'/%3E%3Crect x='30.3' y='44' width='3.4' height='8' rx='1.4' fill='%23f5a524'/%3E%3Crect x='24' y='50' width='16' height='3.6' rx='1.8' fill='%23f5a524'/%3E%3C/svg%3E" />
-<link rel="preconnect" href="https://fonts.googleapis.com" />
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,500&family=Spline+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
-<style>
-  :root {
-    color-scheme: dark;
-    --bg: #100c0a;
-    --bg-2: #15100d;
-    --panel: #1b1612;
-    --panel-2: #221b16;
-    --ink: #f6efe4;
-    --muted: #a4978450;
-    --muted-text: #ab9d89;
-    --line: rgba(255, 255, 255, 0.08);
-    --line-strong: rgba(255, 255, 255, 0.14);
-    --amber: #f5a524;
-    --amber-bright: #ffc164;
-    --amber-deep: #c97e12;
-    --rec: #ff5b4d;
-    --rec-glow: rgba(255, 91, 77, 0.45);
-    --display: "Fraunces", Georgia, serif;
-    --sans: "Spline Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
-    --radius: 16px;
-    --radius-sm: 11px;
-  }
+import { detectPitchHz, hzToMidi, noteName, medianOf } from "./lib/pitch.js";
+import { parseLrc, lyricLineAt } from "./lib/lyrics.js";
+import { micAudioConstraints, micOptions } from "./lib/mic.js";
 
-  * { box-sizing: border-box; }
-
-  html, body {
-    margin: 0;
-    min-height: 100%;
-    background: var(--bg);
-    color: var(--ink);
-    font: 15px/1.5 var(--sans);
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* Atmospheric stage glow + vignette */
-  body::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(900px 520px at 50% -8%, rgba(245, 165, 36, 0.18), transparent 60%),
-      radial-gradient(700px 500px at 85% 110%, rgba(245, 165, 36, 0.06), transparent 55%),
-      radial-gradient(1200px 800px at 50% 50%, transparent 55%, rgba(0, 0, 0, 0.5) 100%);
-  }
-
-  body { position: relative; padding: 0; }
-
-  button, input, textarea { font: inherit; color: inherit; }
-
-  button {
-    border: 1px solid var(--line-strong);
-    background: rgba(255, 255, 255, 0.03);
-    color: var(--ink);
-    border-radius: var(--radius-sm);
-    min-height: 42px;
-    padding: 10px 16px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: background 140ms ease, border-color 140ms ease, transform 80ms ease, color 140ms ease;
-  }
-  button:hover { background: rgba(255, 255, 255, 0.07); border-color: var(--line-strong); }
-  button:active { transform: translateY(1px); }
-  button:disabled { cursor: not-allowed; opacity: 0.4; }
-
-  .primary {
-    background: linear-gradient(180deg, var(--amber-bright), var(--amber));
-    border-color: var(--amber-deep);
-    color: #2a1903;
-    box-shadow: 0 8px 26px rgba(245, 165, 36, 0.28);
-  }
-  .primary:hover { background: linear-gradient(180deg, #ffce82, var(--amber-bright)); }
-  .ghost { background: transparent; border-color: var(--line); }
-  .danger { color: #ff8a80; border-color: rgba(255, 91, 77, 0.3); }
-  .danger:hover { background: rgba(255, 91, 77, 0.12); }
-
-  input, textarea {
-    width: 100%;
-    border: 1px solid var(--line);
-    border-radius: var(--radius-sm);
-    background: rgba(0, 0, 0, 0.25);
-    color: var(--ink);
-    padding: 11px 13px;
-    outline: none;
-    transition: border-color 140ms ease, box-shadow 140ms ease;
-  }
-  input::placeholder, textarea::placeholder { color: #6f6557; }
-  textarea { min-height: 96px; resize: vertical; white-space: pre-wrap; line-height: 1.6; }
-  input:focus, textarea:focus {
-    border-color: var(--amber);
-    box-shadow: 0 0 0 3px rgba(245, 165, 36, 0.16);
-  }
-
-  h1, h2, h3, p { margin: 0; }
-  .muted { color: var(--muted-text); }
-  label {
-    font-size: 11px; font-weight: 600; color: #8d8170;
-    text-transform: uppercase; letter-spacing: 0.07em;
-  }
-
-  /* ---------- Top bar ---------- */
-  .topbar {
-    position: sticky; top: 0; z-index: 30;
-    display: grid;
-    grid-template-columns: 1fr auto 1fr;
-    align-items: center;
-    gap: 16px;
-    padding: 14px 26px;
-    background: rgba(16, 12, 10, 0.72);
-    backdrop-filter: blur(14px);
-    border-bottom: 1px solid var(--line);
-  }
-
-  .brand { display: flex; align-items: center; gap: 11px; font-weight: 600; }
-  .brand .dot {
-    width: 11px; height: 11px; border-radius: 50%;
-    background: var(--rec);
-    box-shadow: 0 0 0 4px rgba(255, 91, 77, 0.18), 0 0 14px var(--rec-glow);
-  }
-  .brand b { font-family: var(--display); font-weight: 600; font-size: 17px; letter-spacing: 0.01em; }
-  .brand .tag { color: #7a6f60; font-size: 12px; padding-left: 6px; }
-
-  .stepper { display: flex; align-items: center; gap: 6px; justify-self: center; }
-  .step {
-    display: flex; align-items: center; gap: 9px;
-    padding: 8px 14px; border-radius: 999px;
-    background: transparent; border: 1px solid transparent;
-    color: #8a7f6f; cursor: pointer; min-height: 0;
-    font-weight: 600; font-size: 13.5px;
-    transition: all 160ms ease;
-  }
-  .step:hover { color: var(--ink); background: rgba(255,255,255,0.04); }
-  .step .num {
-    width: 22px; height: 22px; border-radius: 50%;
-    display: grid; place-items: center; font-size: 12px;
-    background: rgba(255,255,255,0.07); color: #b6a890;
-    border: 1px solid var(--line);
-    transition: all 160ms ease;
-  }
-  .step.current { color: var(--ink); background: rgba(245,165,36,0.12); border-color: rgba(245,165,36,0.3); }
-  .step.current .num { background: var(--amber); color: #2a1903; border-color: transparent; }
-  .step.done .num { background: rgba(245,165,36,0.18); color: var(--amber-bright); border-color: rgba(245,165,36,0.3); }
-  .step-divider { width: 16px; height: 1px; background: var(--line-strong); }
-
-  .topbar .end { justify-self: end; }
-
-  /* ---------- Stage layout ---------- */
-  main { position: relative; z-index: 1; }
-  .stage {
-    display: none;
-    width: min(1180px, 92vw);
-    margin: 0 auto;
-    padding: 40px 0 120px;
-    animation: stageIn 380ms cubic-bezier(0.22, 1, 0.36, 1);
-  }
-  .stage.active { display: block; }
-  #stageSong { width: min(960px, 92vw); }
-  @keyframes stageIn {
-    from { opacity: 0; transform: translateY(14px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-
-  .stage-head { text-align: center; margin-bottom: 30px; }
-  .stage-eyebrow {
-    font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase;
-    color: var(--amber); font-weight: 600; margin-bottom: 12px;
-  }
-  .stage-title { font-family: var(--display); font-weight: 500; font-size: clamp(30px, 5vw, 52px); line-height: 1.02; letter-spacing: -0.01em; }
-  .stage-sub { color: var(--muted-text); margin-top: 12px; font-size: 15.5px; }
-
-  /* ---------- Card ---------- */
-  .card {
-    background: linear-gradient(180deg, var(--panel-2), var(--panel));
-    border: 1px solid var(--line);
-    border-radius: var(--radius);
-    box-shadow: 0 30px 70px rgba(0, 0, 0, 0.45);
-  }
-
-  /* ---------- Setup stage ---------- */
-  .setup-card { max-width: 760px; margin: 0 auto; padding: 30px; }
-
-  /* Quick-start song search */
-  .song-search { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
-  .song-search > label { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; color: var(--amber); }
-  .search-row { display: flex; gap: 10px; }
-  .search-row input { flex: 1; min-height: 50px; font-size: 16px; }
-  .search-row .primary { min-height: 50px; padding: 0 24px; white-space: nowrap; }
-  .search-status { margin-top: 11px; font-size: 13px; min-height: 17px; }
-  .search-status.error { color: #ff8a80; }
-  .search-status.ok { color: var(--amber-bright); }
-  .spin {
-    display: inline-block; width: 14px; height: 14px; border-radius: 50%;
-    border: 2px solid rgba(255,255,255,0.25); border-top-color: var(--amber-bright);
-    animation: spin 0.7s linear infinite; vertical-align: -2px; margin-right: 8px;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  @keyframes fieldFlash {
-    0% { box-shadow: 0 0 0 3px rgba(245,165,36,0.55); border-color: var(--amber); }
-    100% { box-shadow: 0 0 0 3px rgba(245,165,36,0); }
-  }
-  .field.flash input, .field.flash textarea { animation: fieldFlash 1.2s ease; border-color: var(--amber); }
-
-  /* Collapsible manual section */
-  .manual-toggle {
-    width: 100%; display: flex; align-items: center; justify-content: space-between;
-    background: transparent; border: 1px dashed var(--line-strong); color: var(--muted-text);
-    font-weight: 600; min-height: 44px;
-  }
-  .manual-toggle:hover { color: var(--ink); border-color: var(--line-strong); background: rgba(255,255,255,0.03); }
-  .manual-toggle .chev { color: var(--amber); transition: transform 240ms ease; font-size: 13px; }
-  .manual-setup.open .manual-toggle .chev { transform: rotate(90deg); }
-  .manual-body { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 320ms cubic-bezier(0.22,1,0.36,1); }
-  .manual-setup.open .manual-body { grid-template-rows: 1fr; }
-  .manual-inner { overflow: hidden; min-height: 0; }
-  .manual-inner .setup-grid { padding-top: 22px; }
-
-  .setup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 26px; }
-  .setup-section h3 {
-    font-family: var(--display); font-weight: 600; font-size: 19px; margin-bottom: 4px;
-  }
-  .setup-section .hint { color: #8a7e6d; font-size: 13px; margin-bottom: 16px; }
-  .field { display: grid; gap: 7px; margin-bottom: 15px; }
-  .setup-actions {
-    display: flex; gap: 12px; justify-content: flex-end;
-    margin-top: 26px; padding-top: 24px; border-top: 1px solid var(--line);
-  }
-
-  /* ---------- Player frame ---------- */
-  .player-shell { position: relative; }
-  .player-shell::after {
-    content: ""; position: absolute; inset: -22px -22px 6px;
-    background: radial-gradient(60% 70% at 50% 40%, rgba(245,165,36,0.22), transparent 70%);
-    filter: blur(6px); z-index: -1; pointer-events: none;
-  }
-  .player-frame {
-    position: relative; aspect-ratio: 16 / 9; width: 100%;
-    background: #060504; border-radius: var(--radius); overflow: hidden;
-    border: 1px solid rgba(255,255,255,0.1);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.6), inset 0 0 0 1px rgba(255,255,255,0.04);
-  }
-  .player-frame iframe { width: 100%; height: 100%; border: 0; display: block; }
-  .placeholder {
-    position: absolute; inset: 0; display: grid; place-items: center;
-    padding: 28px; text-align: center; color: #b9ac98;
-    background: radial-gradient(120% 120% at 50% 0%, #211a14, #0a0807);
-  }
-  .placeholder .pi { font-size: 30px; opacity: 0.6; margin-bottom: 10px; }
-
-  /* ---------- Warmup stage ---------- */
-  .warmup-wrap { max-width: 880px; margin: 0 auto; }
-  .warmup-dots { display: flex; gap: 9px; justify-content: center; margin-bottom: 22px; }
-  .wd {
-    width: 38px; height: 5px; border-radius: 999px;
-    background: rgba(255,255,255,0.1); transition: all 220ms ease;
-  }
-  .wd.done { background: rgba(245,165,36,0.5); }
-  .wd.on { background: var(--amber); box-shadow: 0 0 12px rgba(245,165,36,0.6); }
-  .warmup-controls {
-    display: flex; align-items: center; justify-content: center; gap: 12px;
-    margin-top: 26px;
-  }
-  .warmup-controls .spacer { flex: 0 0 18px; }
-  .warmup-controls .primary { padding: 12px 26px; }
-
-  /* ---------- Sing stage ---------- */
-  .sing-grid { }
-  .sing-top {
-    display: flex; align-items: center; justify-content: space-between;
-    gap: 16px; margin-bottom: 12px; flex-wrap: wrap;
-  }
-  .song-name { font-family: var(--display); font-weight: 500; font-size: clamp(22px, 3vw, 32px); }
-  .practice-plan {
-    display: grid; gap: 12px; margin-bottom: 14px; padding: 12px;
-    border: 1px solid var(--line); border-radius: var(--radius-sm);
-    background: rgba(0,0,0,0.16);
-  }
-  .practice-plan .plan-fields {
-    display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 10px;
-    align-items: end; margin: 0;
-  }
-  .practice-plan .field { margin: 0; gap: 6px; }
-  .practice-plan input { min-height: 38px; padding: 8px 11px; }
-  .phrase-field { min-width: 260px; }
-  .tempo-pills, .pace-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-  .tempo-pills button, .pace-pills button {
-    min-height: 34px; padding: 6px 10px; border-radius: 999px;
-    color: #9b8e7c; background: rgba(255,255,255,0.03); font-size: 13px;
-  }
-  .tempo-pills button.active, .pace-pills button.active {
-    color: #2a1903; background: var(--amber); border-color: var(--amber);
-  }
-  .lyric-overlay {
-    position: absolute; left: 14px; right: 14px; bottom: 14px; z-index: 4;
-    display: grid; gap: 7px; padding: 12px 14px;
-    border: 1px solid rgba(255,255,255,0.14); border-radius: var(--radius-sm);
-    background: linear-gradient(180deg, rgba(10,8,7,0.78), rgba(10,8,7,0.92));
-    box-shadow: 0 12px 30px rgba(0,0,0,0.45);
-    backdrop-filter: blur(10px);
-  }
-  .lyric-overlay.off {
-    left: auto; right: 14px; width: auto; padding: 8px;
-  }
-  .lyric-overlay.off .line,
-  .lyric-overlay.off .next,
-  .lyric-overlay.off .lyrics-body {
-    display: none;
-  }
-  .lyric-overlay .line {
-    font-family: var(--display); font-size: clamp(18px, 2.4vw, 28px);
-    line-height: 1.18; color: #fff3df; text-align: center;
-  }
-  .lyric-overlay .lyrics-body {
-    max-height: 28vh;
-    overflow: auto;
-    white-space: pre-wrap;
-    color: #f6efe4;
-    font-size: 15px;
-    line-height: 1.55;
-  }
-  .lyric-actions {
-    display: flex; align-items: center; justify-content: center; gap: 8px;
-  }
-  .lyric-actions button {
-    min-height: 30px; padding: 5px 9px; border-radius: 999px;
-    font-size: 12px; background: rgba(255,255,255,0.05);
-  }
-  .lyric-actions .label {
-    color: #8a7e6d; font-size: 12px;
-  }
-  .live-guide {
-    display: grid; gap: 12px; margin-top: 14px; margin-bottom: 90px; padding: 0;
-    border: 1px solid rgba(245,165,36,0.22); border-radius: var(--radius-sm);
-    background: rgba(0,0,0,0.16); overflow: hidden;
-  }
-  .live-guide > summary {
-    list-style: none; cursor: pointer; padding: 12px 14px;
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  }
-  .live-guide > summary::-webkit-details-marker { display: none; }
-  .live-guide summary b { font-family: var(--display); font-weight: 600; font-size: 17px; }
-  .live-guide summary small { display: block; color: #8a7e6d; font-size: 12.5px; margin-top: 2px; }
-  .summary-action { color: var(--amber-bright); font-size: 12.5px; font-weight: 600; }
-  .live-guide[open] .summary-action { font-size: 0; }
-  .live-guide[open] .summary-action::after { content: "Close"; font-size: 12.5px; }
-  .guide-panel {
-    display: grid; gap: 12px; padding: 0 14px 14px;
-    border-top: 1px solid var(--line);
-  }
-  .guide-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 12px; }
-  .guide-readouts {
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px;
-  }
-  .readout {
-    padding: 10px; border: 1px solid var(--line); border-radius: var(--radius-sm);
-    background: rgba(0,0,0,0.22);
-  }
-  .readout span {
-    display: block; color: #8a7e6d; font-size: 10.5px; font-weight: 600;
-    letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 3px;
-  }
-  .readout b { font-size: 18px; color: var(--ink); font-variant-numeric: tabular-nums; }
-  .readout.feedback b.on { color: #1aa37a; }
-  .readout.feedback b.off { color: var(--rec); }
-  .guide-chart-wrap {
-    background: rgba(0,0,0,0.28); border: 1px solid var(--line);
-    border-radius: var(--radius-sm); padding: 10px;
-  }
-  #livePitchChart { width: 100%; height: 150px; display: block; }
-  .live-lyric { min-height: 40px; margin-bottom: 8px; padding: 0 2px; line-height: 1.25; }
-  .live-lyric .cur { display: block; font-size: 17px; font-weight: 700; color: var(--text); }
-  .live-lyric .nxt { display: block; font-size: 13px; color: #8a7e6d; }
-  .live-lyric.muted .cur { font-weight: 500; font-size: 14px; color: #8a7e6d; }
-  .guide-status { min-height: 18px; font-size: 12.5px; color: var(--muted-text); }
-
-  .segmented {
-    display: inline-flex; padding: 4px; gap: 2px;
-    background: rgba(0,0,0,0.3); border: 1px solid var(--line);
-    border-radius: 999px;
-  }
-  .segmented button {
-    border: none; background: transparent; min-height: 34px; padding: 7px 15px;
-    border-radius: 999px; font-size: 13.5px; color: #9b8e7c; box-shadow: none;
-  }
-  .segmented button:hover { background: rgba(255,255,255,0.05); color: var(--ink); }
-  .segmented button.active {
-    background: rgba(245,165,36,0.16); color: var(--amber-bright);
-    border: 1px solid rgba(245,165,36,0.3);
-  }
-
-  .lyrics-view {
-    min-height: 360px; aspect-ratio: 16 / 9;
-    overflow: auto; white-space: pre-wrap;
-    background: linear-gradient(180deg, #1a1511, #120e0b);
-    border: 1px solid rgba(255,255,255,0.1); border-radius: var(--radius);
-    padding: 30px 34px; font-size: 19px; line-height: 1.85; color: #ede4d5;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.5);
-    font-family: var(--display); font-weight: 400;
-  }
-
-  /* ---------- Transport bar (recorder) ---------- */
-  .transport-bar {
-    position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%);
-    z-index: 40; width: min(860px, 92vw);
-    display: none; align-items: center; gap: 16px;
-    padding: 10px 12px;
-    background: rgba(28, 22, 18, 0.86);
-    backdrop-filter: blur(16px);
-    border: 1px solid var(--line-strong);
-    border-radius: 18px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.6);
-  }
-  body.on-sing .transport-bar { display: flex; animation: stageIn 400ms ease; }
-
-  .rec-btn {
-    display: inline-flex; align-items: center; gap: 10px;
-    background: var(--rec); border-color: #c93a2e; color: #fff; font-weight: 600;
-    box-shadow: 0 8px 24px var(--rec-glow); min-height: 46px; padding: 11px 20px;
-  }
-  .rec-btn:hover { background: #ff6f63; }
-  .rec-btn .ring {
-    width: 13px; height: 13px; border-radius: 50%; background: #fff;
-  }
-  .stop-btn {
-    display: inline-flex; align-items: center; gap: 9px;
-    min-height: 46px; padding: 11px 20px;
-  }
-  .stop-btn .sq { width: 12px; height: 12px; border-radius: 3px; background: var(--rec); }
-
-  .transport-bar.recording .rec-btn { display: none; }
-  .transport-bar:not(.recording) .stop-btn { display: none; }
-  .transport-bar:not(.recording) .rec-timer { display: none; }
-  .transport-bar:not(.recording) .meter-wrap { opacity: 0.4; }
-
-  .rec-timer {
-    font-variant-numeric: tabular-nums; font-weight: 600; font-size: 17px;
-    color: var(--rec); min-width: 56px;
-    display: inline-flex; align-items: center; gap: 9px;
-  }
-  .rec-timer .pulse {
-    width: 10px; height: 10px; border-radius: 50%; background: var(--rec);
-    animation: pulse 1s ease-in-out infinite;
-  }
-  @keyframes pulse {
-    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--rec-glow); }
-    50% { opacity: 0.5; box-shadow: 0 0 0 7px rgba(255,91,77,0); }
-  }
-
-  .meter-wrap { flex: 1; min-width: 80px; transition: opacity 160ms ease; }
-  .meter {
-    height: 8px; background: rgba(0,0,0,0.4); border-radius: 999px; overflow: hidden;
-    border: 1px solid var(--line);
-  }
-  .meter span {
-    display: block; height: 100%; width: 0%;
-    background: linear-gradient(90deg, var(--amber), var(--amber-bright));
-    transition: width 90ms linear;
-  }
-  .take-note-input { flex: 1.2; min-width: 130px; }
-  .take-note-input input { min-height: 42px; padding: 9px 11px; }
-
-  .takes-toggle {
-    display: inline-flex; align-items: center; gap: 8px; white-space: nowrap;
-    min-height: 46px;
-  }
-  .badge {
-    display: inline-grid; place-items: center; min-width: 22px; height: 22px; padding: 0 6px;
-    border-radius: 999px; background: var(--amber); color: #2a1903;
-    font-size: 12px; font-weight: 700;
-  }
-  .badge.zero { background: rgba(255,255,255,0.12); color: #9b8e7c; }
-
-  .rec-status {
-    position: fixed; left: 50%; bottom: 82px; transform: translateX(-50%);
-    z-index: 39; font-size: 13px; color: #b6a890; display: none;
-    background: rgba(28,22,18,0.8); padding: 6px 14px; border-radius: 999px;
-    border: 1px solid var(--line); backdrop-filter: blur(8px);
-  }
-  body.on-sing .rec-status { display: block; }
-
-  /* ---------- Takes drawer ---------- */
-  .overlay {
-    position: fixed; inset: 0; z-index: 50; background: rgba(0,0,0,0.5);
-    opacity: 0; pointer-events: none; transition: opacity 240ms ease;
-    backdrop-filter: blur(2px);
-  }
-  .drawer {
-    position: fixed; top: 0; right: 0; z-index: 51; height: 100%;
-    width: min(420px, 92vw);
-    background: linear-gradient(180deg, var(--panel-2), var(--bg-2));
-    border-left: 1px solid var(--line-strong);
-    box-shadow: -30px 0 80px rgba(0,0,0,0.6);
-    transform: translateX(100%); transition: transform 300ms cubic-bezier(0.22, 1, 0.36, 1);
-    display: flex; flex-direction: column;
-  }
-  .drawer.wide { width: min(540px, 96vw); }
-  body.takes-open .overlay, body.history-open .overlay, body.reflect-open .overlay { opacity: 1; pointer-events: auto; }
-  body.takes-open #takesDrawer { transform: translateX(0); }
-  body.history-open #historyDrawer { transform: translateX(0); }
-  .drawer-head {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 22px 22px 16px; border-bottom: 1px solid var(--line);
-  }
-  .drawer-head h2 { font-family: var(--display); font-weight: 600; font-size: 22px; }
-  .drawer-head .x { min-height: 36px; padding: 6px 12px; }
-  .drawer-body { padding: 18px 22px 30px; overflow: auto; display: grid; gap: 14px; }
-
-  .take {
-    display: grid; gap: 11px; padding: 16px;
-    border: 1px solid var(--line); border-radius: var(--radius-sm);
-    background: rgba(0,0,0,0.22);
-  }
-  .take strong { font-family: var(--display); font-weight: 500; font-size: 16px; }
-  .take .meta { color: #97897680; }
-  .take .meta { color: #978976; font-size: 12.5px; margin-top: 2px; }
-  .take .drill { color: var(--amber-bright); font-size: 12.5px; margin-top: 4px; }
-  .take audio { width: 100%; height: 36px; }
-  .take-actions { display: flex; gap: 8px; }
-  .take-actions a { text-decoration: none; flex: 1; }
-  .take-actions button { width: 100%; min-height: 38px; padding: 8px 12px; }
-  .empty-takes { color: #8a7e6d; text-align: center; padding: 30px 10px; }
-
-  /* ---------- Top-bar contextual button ---------- */
-  .on-sing-only { display: none; }
-  body.on-sing .on-sing-only { display: inline-flex; }
-
-  /* ---------- History cards ---------- */
-  .session-card {
-    border: 1px solid var(--line); border-radius: var(--radius-sm);
-    background: rgba(0,0,0,0.22); overflow: hidden;
-  }
-  .session-card > summary {
-    list-style: none; cursor: pointer; padding: 15px 16px;
-    display: grid; gap: 6px;
-  }
-  .session-card > summary::-webkit-details-marker { display: none; }
-  .session-card .sc-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-  .session-card .sc-song { font-family: var(--display); font-weight: 500; font-size: 17px; }
-  .session-card .sc-date { color: #978976; font-size: 12.5px; white-space: nowrap; }
-  .session-card .sc-stars { color: var(--amber); letter-spacing: 2px; font-size: 14px; }
-  .session-card .sc-stars .off { color: rgba(255,255,255,0.16); }
-  .session-card .sc-meta { color: #8a7e6d; font-size: 12.5px; }
-  .session-card .sc-reflect { display: grid; gap: 7px; padding: 0 16px 14px; }
-  .session-card .sc-reflect .r { font-size: 13.5px; }
-  .session-card .sc-reflect .r b { color: var(--amber-bright); font-weight: 600; }
-  .session-card .sc-takes { border-top: 1px solid var(--line); padding: 14px 16px; display: grid; gap: 12px; }
-  .session-card .sc-takes .take { padding: 12px; }
-
-  /* ---------- Reflection modal ---------- */
-  .modal-wrap {
-    position: fixed; inset: 0; z-index: 60; display: grid; place-items: center;
-    padding: 20px; opacity: 0; pointer-events: none; transition: opacity 200ms ease;
-  }
-  body.reflect-open #reflectModal { opacity: 1; pointer-events: auto; }
-  .modal {
-    width: min(520px, 100%); padding: 28px; display: grid; gap: 16px;
-    transform: translateY(14px) scale(0.98); transition: transform 240ms cubic-bezier(0.22,1,0.36,1);
-  }
-  body.reflect-open #reflectModal .modal { transform: translateY(0) scale(1); }
-  .modal h2 { font-family: var(--display); font-weight: 600; font-size: 26px; }
-  .modal .field { margin: 0; gap: 8px; }
-  .modal textarea { min-height: 70px; }
-  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 6px; }
-
-  .stars { display: flex; gap: 6px; }
-  .stars .star {
-    border: none; background: transparent; box-shadow: none;
-    font-size: 30px; line-height: 1; padding: 2px 4px; min-height: 0;
-    color: rgba(255,255,255,0.18); transition: color 120ms ease, transform 100ms ease;
-  }
-  .stars .star:hover { transform: scale(1.12); background: transparent; }
-  .stars .star.lit { color: var(--amber); }
-
-  /* ---------- Pitch analysis modal ---------- */
-  body.analyze-open .modal-wrap#analyzeModal { opacity: 1; pointer-events: auto; }
-  #analyzeModal .modal { transform: translateY(14px) scale(0.98); transition: transform 240ms cubic-bezier(0.22,1,0.36,1); }
-  body.analyze-open #analyzeModal .modal { transform: translateY(0) scale(1); }
-  .analyze-card { width: min(840px, 100%); padding: 24px 26px; }
-  .analyze-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .analyze-head h2 { font-family: var(--display); font-weight: 600; font-size: 24px; }
-  .analyze-head .x { min-height: 36px; padding: 6px 12px; }
-
-  .analyze-loading { text-align: center; padding: 40px 16px; color: var(--muted-text); }
-  .analyze-loading .spin { width: 22px; height: 22px; border-width: 3px; display: block; margin: 0 auto 16px; }
-  .analyze-loading .aly-stage { font-size: 15px; font-weight: 600; color: var(--text); transition: opacity .2s; }
-  .analyze-loading .sub { font-size: 13px; margin-top: 8px; color: #8a7e6d; }
-  .analyze-loading .aly-elapsed { font-variant-numeric: tabular-nums; opacity: .8; }
-
-  .analyze-summary { display: flex; align-items: center; gap: 24px; margin-bottom: 18px; flex-wrap: wrap; }
-  .score-big { font-family: var(--display); font-weight: 600; line-height: 1; }
-  .score-big .num { font-size: 64px; color: var(--amber-bright); }
-  .score-big .pct { font-size: 26px; color: var(--amber); }
-  .score-big .lbl { display: block; font-family: var(--sans); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: #8a7e6d; margin-top: 6px; }
-  .analyze-stats { display: grid; gap: 6px; font-size: 14.5px; }
-  .analyze-stats b { color: var(--amber-bright); font-weight: 600; }
-  .analyze-chart-wrap { background: rgba(0,0,0,0.28); border: 1px solid var(--line); border-radius: var(--radius-sm); padding: 12px; }
-  #analyzeChart { width: 100%; height: 260px; display: block; }
-  .analyze-legend { display: flex; gap: 16px; justify-content: center; margin-top: 10px; font-size: 12.5px; color: var(--muted-text); }
-  .analyze-legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
-  .analyze-error { padding: 28px 10px; text-align: center; color: #ff8a80; }
-
-  .take-actions .analyze-btn { color: var(--amber-bright); border-color: rgba(245,165,36,0.35); }
-  .take-actions .analyze-btn:hover { background: rgba(245,165,36,0.12); }
-
-  /* ---------- Toast ---------- */
-  .toast {
-    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px);
-    z-index: 70; background: var(--amber); color: #2a1903; font-weight: 600;
-    padding: 12px 20px; border-radius: 12px; box-shadow: 0 16px 40px rgba(245,165,36,0.3);
-    opacity: 0; pointer-events: none; transition: opacity 240ms ease, transform 240ms ease;
-  }
-  .toast.show { opacity: 1; transform: translate(-50%, 0); }
-
-  .hidden { display: none !important; }
-
-  /* ---------- Responsive ---------- */
-  @media (max-width: 820px) {
-    .topbar { grid-template-columns: 1fr auto; padding: 12px 16px; }
-    .stepper { display: none; }
-    .setup-grid { grid-template-columns: 1fr; }
-    .practice-plan .plan-fields { grid-template-columns: 1fr; }
-    .guide-readouts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-    .transport-bar { flex-wrap: wrap; }
-    .take-note-input { order: 5; flex: 1 1 100%; }
-  }
-</style>
-</head>
-<body class="on-setup">
-  <header class="topbar">
-    <div class="brand">
-      <span class="dot"></span>
-      <b>Singing Studio</b>
-      <span class="tag">self-guided practice</span>
-    </div>
-    <nav class="stepper" aria-label="Practice progress">
-      <button class="step current" id="stepSetup" data-step="setup"><span class="num">1</span>Setup</button>
-      <span class="step-divider"></span>
-      <button class="step" id="stepWarmups" data-step="warmups"><span class="num">2</span>Warmups</button>
-      <span class="step-divider"></span>
-      <button class="step" id="stepSong" data-step="song"><span class="num">3</span>Sing</button>
-    </nav>
-    <div class="end">
-      <button class="primary on-sing-only" id="endSessionBtn">Finish &amp; reflect</button>
-      <button class="ghost" id="historyBtn">&#9719; History</button>
-      <button class="ghost" id="editSetup">&#9881; Setup</button>
-    </div>
-  </header>
-
-  <main>
-    <!-- STAGE 1: SETUP -->
-    <section id="stageSetup" class="stage active">
-      <div class="stage-head">
-        <div class="stage-eyebrow">Step One</div>
-        <h1 class="stage-title">Set up your session</h1>
-        <p class="stage-sub">Paste your links and lyrics once. Everything is saved in this browser.</p>
-      </div>
-      <div class="card setup-card">
-        <div class="song-search">
-          <label for="songSearch">&#9889; Quick start &mdash; search a song</label>
-          <div class="search-row">
-            <input id="songSearch" placeholder="e.g. Adele - Hello" autocomplete="off" />
-            <button id="searchBtn" class="primary">Search</button>
-          </div>
-          <p id="searchStatus" class="search-status muted">Type a song and we'll find the videos and lyrics for you.</p>
-        </div>
-        <div class="manual-setup" id="manualSetup">
-        <button type="button" class="manual-toggle" id="manualToggle" aria-expanded="false">
-          <span>Enter or edit details manually</span>
-          <span class="chev">&#9656;</span>
-        </button>
-        <div class="manual-body"><div class="manual-inner">
-        <div class="setup-grid">
-          <div class="setup-section">
-            <h3>The Song</h3>
-            <p class="hint">What you're practicing today.</p>
-            <div class="field">
-              <label for="songTitle">Song title</label>
-              <input id="songTitle" placeholder="e.g. Fly Me to the Moon" />
-            </div>
-            <div class="field">
-              <label for="originalUrl">Original song (YouTube)</label>
-              <input id="originalUrl" placeholder="https://youtube.com/watch?v=..." />
-            </div>
-            <div class="field">
-              <label for="instrumentalUrl">Instrumental / karaoke</label>
-              <input id="instrumentalUrl" placeholder="https://youtube.com/watch?v=..." />
-            </div>
-            <div class="field">
-              <label for="lyricVideoUrl">Lyric video (optional)</label>
-              <input id="lyricVideoUrl" placeholder="https://youtube.com/watch?v=..." />
-            </div>
-          </div>
-          <div class="setup-section">
-            <h3>Lyrics &amp; Warmups</h3>
-            <p class="hint">Your words on screen, your vocal warmups queued up.</p>
-            <div class="field">
-              <label for="lyricsInput">Lyrics</label>
-              <textarea id="lyricsInput" placeholder="Paste the lyrics here..."></textarea>
-              <input id="syncedLyricsData" type="hidden" />
-            </div>
-            <div class="field">
-              <label for="warmupLinks">Warmup videos (one URL per line)</label>
-              <textarea id="warmupLinks" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
-            </div>
-          </div>
-        </div>
-        </div></div>
-        </div>
-        <div class="setup-actions">
-          <button id="saveSetup" class="ghost">Save</button>
-          <button id="startSession" class="primary">Start Session &rarr;</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- STAGE 2: WARMUPS -->
-    <section id="stageWarmups" class="stage">
-      <div class="stage-head">
-        <div class="stage-eyebrow">Step Two</div>
-        <h1 class="stage-title">Warm up your voice</h1>
-        <p class="stage-sub" id="warmupStatus">Start a session to begin warmups.</p>
-      </div>
-      <div class="warmup-wrap">
-        <div class="warmup-dots" id="warmupDots"></div>
-        <div class="player-shell">
-          <div class="player-frame">
-            <div id="warmupFrame"></div>
-            <div id="warmupPlaceholder" class="placeholder"><div><div class="pi">&#9835;</div>Add warmup videos in Setup, then press Start Session.</div></div>
-          </div>
-        </div>
-        <div class="warmup-controls">
-          <button id="prevWarmup" class="ghost">&larr; Previous</button>
-          <button id="nextWarmup" class="ghost">Next &rarr;</button>
-          <span class="spacer"></span>
-          <button id="finishWarmups" class="primary">I'm warmed up &rarr;</button>
-        </div>
-      </div>
-    </section>
-
-    <!-- STAGE 3: SING -->
-    <section id="stageSong" class="stage">
-      <div class="sing-grid">
-        <div class="sing-top">
-          <div class="song-name" id="songHeading">Song Practice</div>
-          <div class="segmented" role="tablist" aria-label="Source">
-            <button class="active" data-tab="original">Original</button>
-            <button data-tab="instrumental">Instrumental</button>
-            <button data-tab="lyricVideo">Lyric Video</button>
-            <button data-tab="lyrics">Lyrics</button>
-          </div>
-        </div>
-        <div class="practice-plan" aria-label="Practice controls">
-          <div class="plan-fields">
-            <div class="field phrase-field">
-              <label for="phraseFocus">Phrase focus</label>
-              <input id="phraseFocus" placeholder="Verse 1, chorus high note, line 2..." />
-            </div>
-            <div class="field">
-              <label>Playback pace</label>
-              <div class="pace-pills" id="pacePills">
-                <button type="button" data-rate="0.5">50%</button>
-                <button type="button" data-rate="0.75">75%</button>
-                <button type="button" class="active" data-rate="1">100%</button>
-                <button type="button" data-rate="1.25">125%</button>
-              </div>
-            </div>
-            <div class="field">
-              <label>Take label</label>
-              <div class="tempo-pills" id="tempoPills">
-                <button type="button" class="active" data-tempo="Slow">Slow</button>
-                <button type="button" data-tempo="Medium">Medium</button>
-                <button type="button" data-tempo="Normal">Normal</button>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="player-shell">
-          <div id="videoPane" class="player-frame">
-            <div id="songFrame"></div>
-            <div id="songPlaceholder" class="placeholder"><div><div class="pi">&#9836;</div>Add a YouTube link for this source in Setup.</div></div>
-            <div id="lyricOverlay" class="lyric-overlay">
-              <div class="line">Lyrics</div>
-              <div id="overlayBody" class="lyrics-body">Paste lyrics in Setup to follow along.</div>
-              <div class="lyric-actions">
-                <span class="label">Full lyrics only</span>
-                <button type="button" id="lyricToggle">Hide lyrics</button>
-              </div>
-            </div>
-          </div>
-          <div id="lyricsPane" class="lyrics-view hidden"></div>
-        </div>
-        <details class="live-guide" aria-label="Live pitch guide">
-          <summary>
-            <span>
-              <b>Live pitch guide</b>
-              <small id="guideSummary">Optional real-time sharp / flat feedback</small>
-            </span>
-            <span class="summary-action">Open</span>
-          </summary>
-          <div class="guide-panel">
-            <div class="guide-actions">
-              <button id="prepareGuide" class="ghost">Prepare guide</button>
-              <button id="refreshGuide" class="ghost" disabled>Refresh sync</button>
-              <button id="startGuide" class="primary" disabled>Start live</button>
-              <button id="stopGuide" class="ghost" disabled>Stop</button>
-            </div>
-            <div class="guide-readouts">
-              <div class="readout"><span>Target</span><b id="targetNote">--</b></div>
-              <div class="readout"><span>You</span><b id="userNote">--</b></div>
-              <div class="readout"><span>Difference</span><b id="pitchDelta">--</b></div>
-              <div class="readout feedback"><span>Feedback</span><b id="pitchFeedback">Prepare</b></div>
-            </div>
-            <div class="guide-chart-wrap">
-              <div id="liveLyricLine" class="live-lyric"><span class="cur">&nbsp;</span><span class="nxt"></span></div>
-              <canvas id="livePitchChart"></canvas>
-            </div>
-            <p class="guide-status" id="guideStatus">Use Original or Instrumental, then start the guide when you press play.</p>
-          </div>
-        </details>
-      </div>
-    </section>
-  </main>
-
-  <!-- Transport bar (only on Sing) -->
-  <div class="rec-status" id="recordingStatus">Microphone is idle.</div>
-  <div class="transport-bar" id="transportBar">
-    <button id="recordBtn" class="rec-btn"><span class="ring"></span>Record</button>
-    <button id="stopBtn" class="stop-btn" disabled><span class="sq"></span>Stop</button>
-    <span class="rec-timer" id="recTimer"><span class="pulse"></span>0:00</span>
-    <div class="meter-wrap"><div class="meter" aria-label="Input level"><span id="meterBar"></span></div></div>
-    <div class="take-note-input"><input id="takeNote" placeholder="Take note" /></div>
-    <button id="takesToggle" class="ghost takes-toggle">Takes <span class="badge zero" id="takesCount">0</span></button>
-  </div>
-
-  <!-- Takes drawer -->
-  <div class="overlay" id="drawerOverlay"></div>
-  <aside class="drawer" id="takesDrawer" aria-label="Recorded takes">
-    <div class="drawer-head">
-      <div>
-        <h2>This session</h2>
-        <p class="muted" style="font-size:12.5px;margin-top:2px;">Takes you've recorded today</p>
-      </div>
-      <button class="ghost x" id="closeDrawer">Close</button>
-    </div>
-    <div id="takesList" class="drawer-body"></div>
-  </aside>
-
-  <!-- History drawer -->
-  <aside class="drawer wide" id="historyDrawer" aria-label="Practice history">
-    <div class="drawer-head">
-      <div>
-        <h2>Practice history</h2>
-        <p class="muted" style="font-size:12.5px;margin-top:2px;">Your saved sessions</p>
-      </div>
-      <button class="ghost x" id="closeHistory">Close</button>
-    </div>
-    <div id="historyList" class="drawer-body"></div>
-  </aside>
-
-  <!-- Reflection modal -->
-  <div class="modal-wrap" id="reflectModal" aria-label="Session reflection">
-    <div class="modal card">
-      <h2>How was that session?</h2>
-      <p class="muted" id="reflectSummary">A quick reflection helps you improve.</p>
-
-      <div class="field">
-        <label>How did it feel?</label>
-        <div class="stars" id="reflectStars" role="radiogroup" aria-label="Session rating">
-          <button type="button" class="star" data-rating="1" aria-label="1 star">&#9733;</button>
-          <button type="button" class="star" data-rating="2" aria-label="2 stars">&#9733;</button>
-          <button type="button" class="star" data-rating="3" aria-label="3 stars">&#9733;</button>
-          <button type="button" class="star" data-rating="4" aria-label="4 stars">&#9733;</button>
-          <button type="button" class="star" data-rating="5" aria-label="5 stars">&#9733;</button>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="reflectWins">What went well?</label>
-        <textarea id="reflectWins" placeholder="e.g. nailed the bridge, breath control felt steady..."></textarea>
-      </div>
-      <div class="field">
-        <label for="reflectFocus">What to focus on next time?</label>
-        <textarea id="reflectFocus" placeholder="e.g. the high note in the chorus, pacing on verse 2..."></textarea>
-      </div>
-
-      <div class="modal-actions">
-        <button class="ghost" id="reflectCancel">Cancel</button>
-        <button class="primary" id="reflectSave">Save session</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Pitch analysis modal -->
-  <div class="modal-wrap" id="analyzeModal" aria-label="Pitch analysis">
-    <div class="modal card analyze-card">
-      <div class="analyze-head">
-        <h2>Pitch analysis</h2>
-        <button class="ghost x" id="analyzeClose">Close</button>
-      </div>
-      <div id="analyzeBody"></div>
-    </div>
-  </div>
-
-  <!-- Toast -->
-  <div class="toast" id="toast"></div>
-
-<script src="https://www.youtube.com/iframe_api"></script>
-<script>
 (() => {
   const setupKey = "singing-practice-setup-v1";
+  const micKey = "singing-practice-mic-v1";
   const sessionKey = "singing-practice-current-session-v1";
   const dbName = "singing-practice-recordings";
   const dbVersion = 2;
   const state = {
     step: "setup",
+    micDeviceId: localStorage.getItem(micKey) || "",
     warmupIndex: 0,
     activeTab: "original",
     mediaRecorder: null,
@@ -1266,38 +354,6 @@
     $("overlayBody").textContent = lines.join("\n");
   }
 
-  // __LYRIC_SYNC_START__
-  // Parse an LRC string into time-sorted {t, text} entries. Skips ID tags like
-  // [ti:..]/[ar:..], expands multi-timestamp lines ("[t1][t2]text"), and drops
-  // blank lines. Time is seconds (float).
-  function parseLrc(lrc) {
-    const out = [];
-    const stampRe = /\[(\d{1,2}):(\d{2}(?:\.\d{1,3})?)\]/g;
-    for (const raw of String(lrc || "").split(/\r?\n/)) {
-      const stamps = [];
-      let m;
-      stampRe.lastIndex = 0;
-      while ((m = stampRe.exec(raw))) stamps.push(parseInt(m[1], 10) * 60 + parseFloat(m[2]));
-      if (!stamps.length) continue;                 // metadata tag or untimed line
-      const text = raw.replace(stampRe, "").trim();
-      if (!text) continue;
-      for (const t of stamps) out.push({ t, text });
-    }
-    out.sort((a, b) => a.t - b.t);
-    return out;
-  }
-
-  // Given sorted lines, find the line active at songTime and the one after it.
-  function lyricLineAt(lines, songTime) {
-    let current = null, next = null;
-    for (let i = 0; i < lines.length; i++) {
-      if (lines[i].t <= songTime) current = lines[i];
-      else { next = lines[i]; break; }
-    }
-    return { current, next };
-  }
-  // __LYRIC_SYNC_END__
-
   function render() {
     const setup = getSetup();
     localStorage.setItem(setupKey, JSON.stringify(setup));
@@ -1485,21 +541,6 @@
     drawAnalysisChart(data);
   }
 
-  function noteName(m) {
-    const names = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
-    return names[((m % 12) + 12) % 12] + (Math.floor(m / 12) - 1);
-  }
-
-  function hzToMidi(hz) {
-    return 69 + 12 * Math.log2(hz / 440);
-  }
-
-  function medianOf(arr) {
-    const s = [...arr].sort((a, b) => a - b);
-    const mid = s.length >> 1;
-    return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
-  }
-
   function setGuideStatus(message) {
     $("guideStatus").textContent = message;
   }
@@ -1579,70 +620,6 @@
     return state.liveGuide.fallbackSongTime + ((Date.now() - state.liveGuide.startedAt) / 1000) * state.playbackRate;
   }
 
-  // __PITCH_DETECTOR_START__
-  // McLeod Pitch Method (MPM): a normalized square-difference function plus a
-  // clarity threshold. Unlike plain autocorrelation (which picks the tallest
-  // peak and so often slips to a harmonic an octave away), MPM takes the FIRST
-  // peak above 0.9x the global max, which locks onto the true fundamental and
-  // is robust even when the fundamental is weak or missing. Returns Hz, or null
-  // when the signal is too quiet/noisy to trust.
-  function detectPitchHz(buffer, sampleRate) {
-    const SIZE = buffer.length;
-    let rms = 0;
-    for (let i = 0; i < SIZE; i++) rms += buffer[i] * buffer[i];
-    rms = Math.sqrt(rms / SIZE);
-    if (rms < 0.01) return null;                 // gate: too quiet
-
-    // Normalized square difference function in [-1, 1].
-    const nsdf = new Float32Array(SIZE);
-    for (let tau = 0; tau < SIZE; tau++) {
-      let acf = 0, m = 0;
-      for (let i = 0; i + tau < SIZE; i++) {
-        const a = buffer[i], b = buffer[i + tau];
-        acf += a * b;
-        m += a * a + b * b;
-      }
-      nsdf[tau] = m > 0 ? (2 * acf) / m : 0;
-    }
-
-    // Collect the local maximum of each positive lobe past the central peak.
-    const maxima = [];
-    let tau = 0;
-    while (tau < SIZE - 1 && nsdf[tau] > 0) tau++;   // skip the lobe around tau=0
-    while (tau < SIZE - 1) {
-      if (nsdf[tau] > 0) {
-        let peakTau = tau, peakVal = nsdf[tau];
-        while (tau < SIZE - 1 && nsdf[tau] > 0) {
-          if (nsdf[tau] > peakVal) { peakVal = nsdf[tau]; peakTau = tau; }
-          tau++;
-        }
-        maxima.push([peakTau, peakVal]);
-      } else {
-        tau++;
-      }
-    }
-    if (!maxima.length) return null;
-
-    let globalMax = 0;
-    for (const [, v] of maxima) if (v > globalMax) globalMax = v;
-    const threshold = 0.9 * globalMax;
-    let chosen = maxima[0];
-    for (const mx of maxima) { if (mx[1] >= threshold) { chosen = mx; break; } }
-
-    const [peakTau, clarity] = chosen;
-    if (clarity < 0.5) return null;               // gate: not periodic enough
-
-    // Parabolic interpolation around the chosen peak for sub-sample precision.
-    const x1 = nsdf[peakTau - 1] || 0, x2 = nsdf[peakTau], x3 = nsdf[peakTau + 1] || 0;
-    const denom = 2 * (2 * x2 - x1 - x3);
-    const shift = denom !== 0 ? (x3 - x1) / denom : 0;
-    const period = peakTau + (Number.isFinite(shift) ? shift : 0);
-    if (period <= 0) return null;
-    const hz = sampleRate / period;
-    return hz >= 65 && hz <= 1200 ? hz : null;
-  }
-  // __PITCH_DETECTOR_END__
-
   async function startLiveGuide() {
     if (!state.liveGuide.ref) {
       await prepareLiveGuide();
@@ -1654,7 +631,8 @@
     }
     try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await openMic();
+      await refreshMicList();
       const ctx = new AudioContextClass();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
@@ -1976,16 +954,80 @@
     state.timerInterval = 0;
   }
 
+  // Prefer Opus at a music-grade bitrate; fall back to the browser default if
+  // the type isn't supported. 128 kbps mono is plenty for a vocal take and a big
+  // step up from MediaRecorder's low default.
+  function pickRecorderOptions() {
+    const opts = { audioBitsPerSecond: 128000 };
+    const canType = window.MediaRecorder && MediaRecorder.isTypeSupported;
+    for (const type of ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]) {
+      if (canType && MediaRecorder.isTypeSupported(type)) { opts.mimeType = type; break; }
+    }
+    return opts;
+  }
+
+  // Open the mic with singing-tuned constraints, selecting the chosen device.
+  // Falls back to the default device if the exact one is gone/unavailable.
+  async function openMic() {
+    try {
+      return await navigator.mediaDevices.getUserMedia(micAudioConstraints(state.micDeviceId));
+    } catch (err) {
+      if (state.micDeviceId && (err.name === "OverconstrainedError" || err.name === "NotFoundError")) {
+        state.micDeviceId = "";
+        localStorage.removeItem(micKey);
+        return navigator.mediaDevices.getUserMedia(micAudioConstraints(""));
+      }
+      throw err;
+    }
+  }
+
+  // Populate the mic <select>. Labels only appear once permission is granted, so
+  // this is called again after the first successful capture and on devicechange.
+  async function refreshMicList() {
+    const sel = $("micSelect");
+    if (!sel || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    let devices = [];
+    try {
+      devices = await navigator.mediaDevices.enumerateDevices();
+    } catch { return; }
+    const opts = micOptions(devices, state.micDeviceId);
+    sel.innerHTML = "";
+    for (const o of opts) {
+      const el = document.createElement("option");
+      el.value = o.value;
+      el.textContent = o.label;
+      el.selected = o.selected;
+      sel.appendChild(el);
+    }
+    // Keep state in sync if the saved device vanished (options fell back to Default).
+    if (state.micDeviceId && !opts.some((o) => o.value === state.micDeviceId)) {
+      state.micDeviceId = "";
+      localStorage.removeItem(micKey);
+    }
+  }
+
+  function onMicChange() {
+    state.micDeviceId = $("micSelect").value || "";
+    if (state.micDeviceId) localStorage.setItem(micKey, state.micDeviceId);
+    else localStorage.removeItem(micKey);
+    setRecordingStatus(
+      state.micDeviceId
+        ? "Microphone set. Press Record to sing your take."
+        : "Using the default microphone. Press Record to sing your take."
+    );
+  }
+
   async function startRecording() {
     if (!navigator.mediaDevices || !window.MediaRecorder) {
       setRecordingStatus("Recording is not supported in this browser.");
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await openMic();
+      await refreshMicList();  // labels are available now that permission is granted
       state.audioStream = stream;
       state.audioChunks = [];
-      state.mediaRecorder = new MediaRecorder(stream);
+      state.mediaRecorder = new MediaRecorder(stream, pickRecorderOptions());
       state.mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size) state.audioChunks.push(event.data);
       };
@@ -2244,6 +1286,10 @@
     $("finishWarmups").addEventListener("click", () => setStep("song"));
     $("recordBtn").addEventListener("click", startRecording);
     $("stopBtn").addEventListener("click", stopRecording);
+    $("micSelect").addEventListener("change", onMicChange);
+    if (navigator.mediaDevices && "ondevicechange" in navigator.mediaDevices) {
+      navigator.mediaDevices.addEventListener("devicechange", () => { refreshMicList(); });
+    }
     $("prepareGuide").addEventListener("click", prepareLiveGuide);
     $("refreshGuide").addEventListener("click", refreshLiveGuide);
     $("startGuide").addEventListener("click", startLiveGuide);
@@ -2320,6 +1366,7 @@
   ensureSession();
   bindEvents();
   render();
+  refreshMicList();  // populate mic list (labels fill in after first permission grant)
   initPlayers(); // in case the YT API loaded before this script ran
   renderTakes().catch((error) => {
     $("takesList").innerHTML = `<p class="empty-takes">Could not load takes: ${escapeHtml(error.message)}</p>`;
@@ -2328,6 +1375,3 @@
   // Test hook: lets the smoke test simulate an un-embeddable video.
   window.__studioTest = { forceSongError: () => onSongError({ data: 150 }) };
 })();
-</script>
-</body>
-</html>
