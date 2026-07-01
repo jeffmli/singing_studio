@@ -455,6 +455,14 @@ body.on-sing .transport-bar { display: flex; animation: stageIn 400ms ease; }
   background: linear-gradient(90deg, var(--amber), var(--amber-bright));
   transition: width 90ms linear;
 }
+.mic-picker { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.mic-picker .mic-ico { font-size: 14px; opacity: 0.8; }
+.mic-picker select {
+  max-width: 160px; min-height: 42px; padding: 6px 8px;
+  background: rgba(0,0,0,0.35); color: var(--text);
+  border: 1px solid var(--line); border-radius: 8px; font-size: 12.5px;
+  text-overflow: ellipsis;
+}
 .take-note-input { flex: 1.2; min-width: 130px; }
 .take-note-input input { min-height: 42px; padding: 9px 11px; }
 

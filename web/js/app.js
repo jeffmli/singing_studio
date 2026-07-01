@@ -1,13 +1,16 @@
 import { detectPitchHz, hzToMidi, noteName, medianOf } from "./lib/pitch.js";
 import { parseLrc, lyricLineAt } from "./lib/lyrics.js";
+import { micAudioConstraints, micOptions } from "./lib/mic.js";
 
 (() => {
   const setupKey = "singing-practice-setup-v1";
+  const micKey = "singing-practice-mic-v1";
   const sessionKey = "singing-practice-current-session-v1";
   const dbName = "singing-practice-recordings";
   const dbVersion = 2;
   const state = {
     step: "setup",
+    micDeviceId: localStorage.getItem(micKey) || "",
     warmupIndex: 0,
     activeTab: "original",
     mediaRecorder: null,
@@ -628,7 +631,8 @@ import { parseLrc, lyricLineAt } from "./lib/lyrics.js";
     }
     try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await openMic();
+      await refreshMicList();
       const ctx = new AudioContextClass();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = 2048;
@@ -950,16 +954,80 @@ import { parseLrc, lyricLineAt } from "./lib/lyrics.js";
     state.timerInterval = 0;
   }
 
+  // Prefer Opus at a music-grade bitrate; fall back to the browser default if
+  // the type isn't supported. 128 kbps mono is plenty for a vocal take and a big
+  // step up from MediaRecorder's low default.
+  function pickRecorderOptions() {
+    const opts = { audioBitsPerSecond: 128000 };
+    const canType = window.MediaRecorder && MediaRecorder.isTypeSupported;
+    for (const type of ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]) {
+      if (canType && MediaRecorder.isTypeSupported(type)) { opts.mimeType = type; break; }
+    }
+    return opts;
+  }
+
+  // Open the mic with singing-tuned constraints, selecting the chosen device.
+  // Falls back to the default device if the exact one is gone/unavailable.
+  async function openMic() {
+    try {
+      return await navigator.mediaDevices.getUserMedia(micAudioConstraints(state.micDeviceId));
+    } catch (err) {
+      if (state.micDeviceId && (err.name === "OverconstrainedError" || err.name === "NotFoundError")) {
+        state.micDeviceId = "";
+        localStorage.removeItem(micKey);
+        return navigator.mediaDevices.getUserMedia(micAudioConstraints(""));
+      }
+      throw err;
+    }
+  }
+
+  // Populate the mic <select>. Labels only appear once permission is granted, so
+  // this is called again after the first successful capture and on devicechange.
+  async function refreshMicList() {
+    const sel = $("micSelect");
+    if (!sel || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
+    let devices = [];
+    try {
+      devices = await navigator.mediaDevices.enumerateDevices();
+    } catch { return; }
+    const opts = micOptions(devices, state.micDeviceId);
+    sel.innerHTML = "";
+    for (const o of opts) {
+      const el = document.createElement("option");
+      el.value = o.value;
+      el.textContent = o.label;
+      el.selected = o.selected;
+      sel.appendChild(el);
+    }
+    // Keep state in sync if the saved device vanished (options fell back to Default).
+    if (state.micDeviceId && !opts.some((o) => o.value === state.micDeviceId)) {
+      state.micDeviceId = "";
+      localStorage.removeItem(micKey);
+    }
+  }
+
+  function onMicChange() {
+    state.micDeviceId = $("micSelect").value || "";
+    if (state.micDeviceId) localStorage.setItem(micKey, state.micDeviceId);
+    else localStorage.removeItem(micKey);
+    setRecordingStatus(
+      state.micDeviceId
+        ? "Microphone set. Press Record to sing your take."
+        : "Using the default microphone. Press Record to sing your take."
+    );
+  }
+
   async function startRecording() {
     if (!navigator.mediaDevices || !window.MediaRecorder) {
       setRecordingStatus("Recording is not supported in this browser.");
       return;
     }
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const stream = await openMic();
+      await refreshMicList();  // labels are available now that permission is granted
       state.audioStream = stream;
       state.audioChunks = [];
-      state.mediaRecorder = new MediaRecorder(stream);
+      state.mediaRecorder = new MediaRecorder(stream, pickRecorderOptions());
       state.mediaRecorder.ondataavailable = (event) => {
         if (event.data && event.data.size) state.audioChunks.push(event.data);
       };
@@ -1218,6 +1286,10 @@ import { parseLrc, lyricLineAt } from "./lib/lyrics.js";
     $("finishWarmups").addEventListener("click", () => setStep("song"));
     $("recordBtn").addEventListener("click", startRecording);
     $("stopBtn").addEventListener("click", stopRecording);
+    $("micSelect").addEventListener("change", onMicChange);
+    if (navigator.mediaDevices && "ondevicechange" in navigator.mediaDevices) {
+      navigator.mediaDevices.addEventListener("devicechange", () => { refreshMicList(); });
+    }
     $("prepareGuide").addEventListener("click", prepareLiveGuide);
     $("refreshGuide").addEventListener("click", refreshLiveGuide);
     $("startGuide").addEventListener("click", startLiveGuide);
@@ -1294,6 +1366,7 @@ import { parseLrc, lyricLineAt } from "./lib/lyrics.js";
   ensureSession();
   bindEvents();
   render();
+  refreshMicList();  // populate mic list (labels fill in after first permission grant)
   initPlayers(); // in case the YT API loaded before this script ran
   renderTakes().catch((error) => {
     $("takesList").innerHTML = `<p class="empty-takes">Could not load takes: ${escapeHtml(error.message)}</p>`;
