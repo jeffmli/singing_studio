@@ -5,6 +5,7 @@ import { initSetup } from "./features/setup.js";
 import { initWarmups } from "./features/warmups.js";
 import { initTakes } from "./features/takes.js";
 import { initPlayers } from "./features/players.js";
+import { initSearch } from "./features/search.js";
 import { initLegacy } from "./app.js";
 
 const store = createStore(initialState, reducers);
@@ -17,6 +18,7 @@ initSetup(store, ctx);
 initWarmups(store, ctx);
 initTakes(store, ctx);
 initPlayers(store, ctx);
+initSearch(store, ctx);
 initLegacy(store, ctx);
 
 // Initial paint for regions the store hasn't ticked yet.
