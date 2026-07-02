@@ -11,13 +11,13 @@ Base: 7d68ceb
 - [x] Task 4: core/db.js (+fake-indexeddb)
 - [x] Task 5: main.js entry switch / initLegacy
 - [x] Task 6: setup (ctx service registry + setupRev reducer introduced)
-- [ ] Task 7: warmups
-- [ ] Task 8: takes
-- [ ] Task 9: players
-- [ ] Task 10: search
-- [ ] Task 11: recording
-- [ ] Task 12: analysis
-- [ ] Task 13: history
-- [ ] Task 14: live-guide
+- [x] Task 7: warmups
+- [x] Task 8: takes (getTake added to core/db.js; fileNameForTake lives in takes.js)
+- [x] Task 9: players (getSongDuration was dead code — dropped; songPlayerTime probe on ctx)
+- [x] Task 10: search
+- [x] Task 11: recording
+- [x] Task 12: analysis
+- [x] Task 13: history (owns session lifecycle + toast)
+- [x] Task 14: live-guide (app.js now an empty shell)
 - [ ] Task 15: CSS split
 - [ ] Task 16: delete app.js
