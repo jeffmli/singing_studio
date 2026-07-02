@@ -199,30 +199,6 @@ export function initLegacy(store, ctx) {
     $("recordingStatus").textContent = message;
   }
 
-  function renderWarmups(setup) {
-    const total = setup.warmups.length;
-    const wi = Math.min(store.get().warmupIndex, Math.max(0, total - 1));
-    $("warmupStatus").textContent = total
-      ? `Exercise ${wi + 1} of ${total} — take your time.`
-      : "Add warmup videos in Setup to begin.";
-
-    const dots = $("warmupDots");
-    dots.innerHTML = "";
-    for (let i = 0; i < total; i++) {
-      const d = document.createElement("span");
-      d.className = "wd" + (i === wi ? " on" : i < wi ? " done" : "");
-      dots.appendChild(d);
-    }
-
-    if (store.get().step === "warmups") {
-      showWarmupVideo(setup.warmups[wi] || "");
-    } else {
-      applyVideo("warmup", "");
-    }
-    $("prevWarmup").disabled = wi <= 0;
-    $("nextWarmup").disabled = wi >= total - 1;
-  }
-
   function renderSong(setup) {
     const activeTab = store.get().activeTab;
     $("songHeading").textContent = setup.songTitle ? setup.songTitle : "Song Practice";
@@ -265,9 +241,7 @@ export function initLegacy(store, ctx) {
   }
 
   function render() {
-    const setup = ctx.getSetup();
-    renderWarmups(setup);
-    renderSong(setup);
+    renderSong(ctx.getSetup());
   }
 
   function openDb() {
@@ -1163,14 +1137,6 @@ export function initLegacy(store, ctx) {
     $("songSearch").addEventListener("keydown", (event) => {
       if (event.key === "Enter") { event.preventDefault(); runSearch(); }
     });
-    $("prevWarmup").addEventListener("click", () => {
-      store.dispatch({ type: "setWarmupIndex", payload: Math.max(0, store.get().warmupIndex - 1) });
-    });
-    $("nextWarmup").addEventListener("click", () => {
-      const total = ctx.getSetup().warmups.length;
-      store.dispatch({ type: "setWarmupIndex", payload: Math.min(Math.max(0, total - 1), store.get().warmupIndex + 1) });
-    });
-    $("finishWarmups").addEventListener("click", () => store.dispatch({ type: "setStep", payload: "song" }));
     $("recordBtn").addEventListener("click", startRecording);
     $("stopBtn").addEventListener("click", stopRecording);
     $("micSelect").addEventListener("change", onMicChange);
@@ -1242,9 +1208,11 @@ export function initLegacy(store, ctx) {
   ctx.setRecordingStatus = setRecordingStatus;
   ctx.startNewSession = startNewSession;
   ctx.renderTakes = renderTakes;
+  ctx.showWarmupVideo = showWarmupVideo;
+  ctx.applyVideo = applyVideo;
 
   // Re-render the not-yet-migrated regions whenever navigation or setup changes.
-  store.subscribe((s) => `${s.step}|${s.activeTab}|${s.setupRev}|${s.warmupIndex}`, render);
+  store.subscribe((s) => `${s.step}|${s.activeTab}|${s.setupRev}`, render);
   // Leaving the sing stage stops a running live guide (was inside setStep()).
   store.subscribe((s) => s.step, (step) => {
     if (step !== "song" && state.liveGuide.running) stopLiveGuide();

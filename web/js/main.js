@@ -2,6 +2,7 @@
 import { createStore } from "./core/store.js";
 import { initialState, reducers } from "./core/actions.js";
 import { initSetup } from "./features/setup.js";
+import { initWarmups } from "./features/warmups.js";
 import { initLegacy } from "./app.js";
 
 const store = createStore(initialState, reducers);
@@ -11,4 +12,8 @@ const store = createStore(initialState, reducers);
 const ctx = {};
 
 initSetup(store, ctx);
+initWarmups(store, ctx);
 initLegacy(store, ctx);
+
+// Initial paint for regions the store hasn't ticked yet.
+ctx.renderWarmups();
