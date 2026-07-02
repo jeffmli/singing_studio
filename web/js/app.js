@@ -2,7 +2,7 @@ import { detectPitchHz, hzToMidi, noteName, medianOf } from "./lib/pitch.js";
 import { parseLrc, lyricLineAt } from "./lib/lyrics.js";
 import { micAudioConstraints, micOptions } from "./lib/mic.js";
 
-(() => {
+export function initLegacy(store) {
   const setupKey = "singing-practice-setup-v1";
   const micKey = "singing-practice-mic-v1";
   const sessionKey = "singing-practice-current-session-v1";
@@ -1374,4 +1374,4 @@ import { micAudioConstraints, micOptions } from "./lib/mic.js";
 
   // Test hook: lets the smoke test simulate an un-embeddable video.
   window.__studioTest = { forceSongError: () => onSongError({ data: 150 }) };
-})();
+}
