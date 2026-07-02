@@ -19,5 +19,8 @@ Base: 7d68ceb
 - [x] Task 12: analysis
 - [x] Task 13: history (owns session lifecycle + toast)
 - [x] Task 14: live-guide (app.js now an empty shell)
-- [ ] Task 15: CSS split
-- [ ] Task 16: delete app.js
+- [x] Task 15: CSS split (responsive block re-homed per concern to keep cascade)
+- [x] Task 16: delete app.js
+
+## Done — 2026-07-01
+All 16 tasks complete. Smoke test 60/60; 16 unit/component test files pass.
