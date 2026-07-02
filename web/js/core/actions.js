@@ -16,6 +16,7 @@ export const initialState = {
   takesCount: 0,
   liveGuideReady: false,
   liveGuideRunning: false,
+  setupRev: 0, // bumped whenever the persisted setup changes; features re-render on it
 };
 
 const set = (key) => (s, v) => ({ ...s, [key]: v });
@@ -34,4 +35,5 @@ export const reducers = {
   setLiveGuideReady: set("liveGuideReady"),
   setLiveGuideRunning: set("liveGuideRunning"),
   setSession: (s, { id, startedAt }) => ({ ...s, sessionId: id, sessionStartedAt: startedAt }),
+  bumpSetupRev: (s) => ({ ...s, setupRev: s.setupRev + 1 }),
 };

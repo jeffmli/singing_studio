@@ -11,6 +11,7 @@ ok("setStep does not mutate original", initialState.step === "setup");
 const s2 = reducers.setSession(initialState, { id: "abc", startedAt: 123 });
 ok("setSession sets id + startedAt", s2.sessionId === "abc" && s2.sessionStartedAt === 123);
 ok("setLiveGuideRunning toggles", reducers.setLiveGuideRunning(initialState, true).liveGuideRunning === true);
+ok("bumpSetupRev increments", reducers.bumpSetupRev(initialState).setupRev === initialState.setupRev + 1);
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAIL"}: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

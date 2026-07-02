@@ -1,18 +1,15 @@
 import { detectPitchHz, hzToMidi, noteName, medianOf } from "./lib/pitch.js";
 import { parseLrc, lyricLineAt } from "./lib/lyrics.js";
 import { micAudioConstraints, micOptions } from "./lib/mic.js";
+import { parseYouTubeId } from "./features/setup.js";
 
-export function initLegacy(store) {
-  const setupKey = "singing-practice-setup-v1";
+export function initLegacy(store, ctx) {
   const micKey = "singing-practice-mic-v1";
   const sessionKey = "singing-practice-current-session-v1";
   const dbName = "singing-practice-recordings";
   const dbVersion = 2;
   const state = {
-    step: "setup",
     micDeviceId: localStorage.getItem(micKey) || "",
-    warmupIndex: 0,
-    activeTab: "original",
     mediaRecorder: null,
     audioChunks: [],
     audioStream: null,
@@ -46,23 +43,6 @@ export function initLegacy(store) {
   };
 
   const $ = (id) => document.getElementById(id);
-  const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput", "phraseFocus"];
-
-  function parseYouTubeId(value) {
-    const raw = String(value || "").trim();
-    if (!raw) return "";
-    try {
-      const url = new URL(raw);
-      if (url.hostname.includes("youtu.be")) return url.pathname.split("/").filter(Boolean)[0] || "";
-      if (url.searchParams.get("v")) return url.searchParams.get("v");
-      const parts = url.pathname.split("/").filter(Boolean);
-      const markers = ["embed", "shorts", "live"];
-      const marker = parts.findIndex((part) => markers.includes(part));
-      return marker >= 0 ? parts[marker + 1] || "" : "";
-    } catch {
-      return raw.length === 11 ? raw : "";
-    }
-  }
 
   function lyricLines() {
     return $("lyricsInput").value
@@ -166,7 +146,7 @@ export function initLegacy(store) {
     if (!SONG_KINDS.includes(kind)) return;
     if (playerState.song.currentId) state.triedVideos[kind].add(playerState.song.currentId);
 
-    const title = getSetup().songTitle;
+    const title = ctx.getSetup().songTitle;
     if (!title) { showSongPlaceholder("This video can't be embedded. Paste another link in Setup."); return; }
 
     showToast("That video couldn't be embedded — finding another…");
@@ -177,7 +157,7 @@ export function initLegacy(store) {
       const alt = data && data.result;
       if (alt && alt.url) {
         $(KIND_FIELD[kind]).value = alt.url;
-        localStorage.setItem(setupKey, JSON.stringify(getSetup()));
+        ctx.saveSetup({ silent: true });
         playerState.song.currentId = null; // force reload even if ids coincide
         showSongVideo(kind, alt.url);
         showToast("Switched to another video that plays ✓");
@@ -190,58 +170,6 @@ export function initLegacy(store) {
   }
 
   window.onYouTubeIframeAPIReady = initPlayers;
-
-  function getSetup() {
-    return {
-      songTitle: $("songTitle").value.trim(),
-      warmups: $("warmupLinks").value.split(/\n+/).map((line) => line.trim()).filter(Boolean),
-      originalUrl: $("originalUrl").value.trim(),
-      instrumentalUrl: $("instrumentalUrl").value.trim(),
-      lyricVideoUrl: $("lyricVideoUrl").value.trim(),
-      lyrics: $("lyricsInput").value.trim(),
-      syncedLyrics: $("syncedLyricsData").value || "",
-      phraseFocus: $("phraseFocus").value.trim(),
-    };
-  }
-
-  function saveSetup({ silent = false } = {}) {
-    localStorage.setItem(setupKey, JSON.stringify(getSetup()));
-    if (!silent) setRecordingStatus("Setup saved.");
-    render();
-  }
-
-  function loadSetup() {
-    const fallback = {
-      songTitle: "Practice Song",
-      warmups: [
-        "https://www.youtube.com/watch?v=3eT2NoTYwNA",
-        "https://www.youtube.com/watch?v=ck1pzgy07ZU"
-      ],
-      originalUrl: "",
-      instrumentalUrl: "",
-      lyricVideoUrl: "",
-      lyrics: "",
-      syncedLyrics: "",
-      phraseFocus: "",
-    };
-    const saved = JSON.parse(localStorage.getItem(setupKey) || "null") || fallback;
-    $("songTitle").value = saved.songTitle || "";
-    $("warmupLinks").value = (saved.warmups || []).join("\n");
-    $("originalUrl").value = saved.originalUrl || "";
-    $("instrumentalUrl").value = saved.instrumentalUrl || "";
-    $("lyricVideoUrl").value = saved.lyricVideoUrl || "";
-    $("lyricsInput").value = saved.lyrics || "";
-    $("syncedLyricsData").value = saved.syncedLyrics || "";
-    $("phraseFocus").value = saved.phraseFocus || "";
-  }
-
-  function setStep(step) {
-    if (state.step === "song" && step !== "song" && state.liveGuide.running) {
-      stopLiveGuide();
-    }
-    state.step = step;
-    render();
-  }
 
   // ---------- Session lifecycle ----------
   function persistCurrentSession() {
@@ -271,57 +199,39 @@ export function initLegacy(store) {
     $("recordingStatus").textContent = message;
   }
 
-  function renderStages() {
-    const map = { setup: "stageSetup", warmups: "stageWarmups", song: "stageSong" };
-    for (const [key, id] of Object.entries(map)) {
-      $(id).classList.toggle("active", state.step === key);
-    }
-    // Stepper state
-    const order = ["setup", "warmups", "song"];
-    const current = order.indexOf(state.step);
-    [["stepSetup", 0], ["stepWarmups", 1], ["stepSong", 2]].forEach(([id, idx]) => {
-      const el = $(id);
-      el.classList.toggle("current", idx === current);
-      el.classList.toggle("done", idx < current);
-    });
-    // Body mode for transport bar visibility
-    document.body.classList.toggle("on-setup", state.step === "setup");
-    document.body.classList.toggle("on-warmups", state.step === "warmups");
-    document.body.classList.toggle("on-sing", state.step === "song");
-  }
-
   function renderWarmups(setup) {
     const total = setup.warmups.length;
-    if (state.warmupIndex >= total) state.warmupIndex = Math.max(0, total - 1);
+    const wi = Math.min(store.get().warmupIndex, Math.max(0, total - 1));
     $("warmupStatus").textContent = total
-      ? `Exercise ${state.warmupIndex + 1} of ${total} — take your time.`
+      ? `Exercise ${wi + 1} of ${total} — take your time.`
       : "Add warmup videos in Setup to begin.";
 
     const dots = $("warmupDots");
     dots.innerHTML = "";
     for (let i = 0; i < total; i++) {
       const d = document.createElement("span");
-      d.className = "wd" + (i === state.warmupIndex ? " on" : i < state.warmupIndex ? " done" : "");
+      d.className = "wd" + (i === wi ? " on" : i < wi ? " done" : "");
       dots.appendChild(d);
     }
 
-    if (state.step === "warmups") {
-      showWarmupVideo(setup.warmups[state.warmupIndex] || "");
+    if (store.get().step === "warmups") {
+      showWarmupVideo(setup.warmups[wi] || "");
     } else {
       applyVideo("warmup", "");
     }
-    $("prevWarmup").disabled = state.warmupIndex <= 0;
-    $("nextWarmup").disabled = state.warmupIndex >= total - 1;
+    $("prevWarmup").disabled = wi <= 0;
+    $("nextWarmup").disabled = wi >= total - 1;
   }
 
   function renderSong(setup) {
+    const activeTab = store.get().activeTab;
     $("songHeading").textContent = setup.songTitle ? setup.songTitle : "Song Practice";
     $("lyricsPane").textContent = setup.lyrics || "Paste lyrics in Setup to see them here.";
     for (const button of document.querySelectorAll("[data-tab]")) {
-      button.classList.toggle("active", button.dataset.tab === state.activeTab);
+      button.classList.toggle("active", button.dataset.tab === activeTab);
     }
 
-    const showLyrics = state.activeTab === "lyrics";
+    const showLyrics = activeTab === "lyrics";
     $("videoPane").classList.toggle("hidden", showLyrics);
     $("lyricsPane").classList.toggle("hidden", !showLyrics);
 
@@ -330,8 +240,8 @@ export function initLegacy(store) {
       instrumental: setup.instrumentalUrl,
       lyricVideo: setup.lyricVideoUrl,
     };
-    if (state.step === "song" && !showLyrics) {
-      showSongVideo(state.activeTab, videoMap[state.activeTab] || "");
+    if (store.get().step === "song" && !showLyrics) {
+      showSongVideo(activeTab, videoMap[activeTab] || "");
     } else {
       applyVideo("song", "");
     }
@@ -342,7 +252,7 @@ export function initLegacy(store) {
     const overlay = $("lyricOverlay");
     if (!overlay) return;
     const lines = lyricLines();
-    const isVideo = state.step === "song" && state.activeTab !== "lyrics";
+    const isVideo = store.get().step === "song" && store.get().activeTab !== "lyrics";
     overlay.classList.toggle("off", state.lyricsOverlay.hidden || !isVideo);
     $("lyricToggle").textContent = state.lyricsOverlay.hidden ? "Show lyrics" : "Hide lyrics";
 
@@ -355,9 +265,7 @@ export function initLegacy(store) {
   }
 
   function render() {
-    const setup = getSetup();
-    localStorage.setItem(setupKey, JSON.stringify(setup));
-    renderStages();
+    const setup = ctx.getSetup();
     renderWarmups(setup);
     renderSong(setup);
   }
@@ -467,7 +375,7 @@ export function initLegacy(store) {
   async function analyzeTake(id) {
     const take = await getTake(id);
     if (!take) return;
-    const videoUrl = take.originalUrl || getSetup().originalUrl;
+    const videoUrl = take.originalUrl || ctx.getSetup().originalUrl;
     const body = $("analyzeBody");
     closePanels();
     document.body.classList.add("analyze-open");
@@ -546,7 +454,7 @@ export function initLegacy(store) {
   }
 
   async function prepareLiveGuide() {
-    const setup = getSetup();
+    const setup = ctx.getSetup();
     if (!setup.originalUrl) {
       setGuideStatus("Add the Original song YouTube link first.");
       $("pitchFeedback").textContent = "No song";
@@ -1059,7 +967,7 @@ export function initLegacy(store) {
   }
 
   async function saveRecording() {
-    const setup = getSetup();
+    const setup = ctx.getSetup();
     const blob = new Blob(state.audioChunks, { type: "audio/webm" });
     const take = {
       id: crypto.randomUUID(),
@@ -1153,7 +1061,7 @@ export function initLegacy(store) {
   async function openReflect() {
     const takes = (await readTakes()).filter((t) => t.sessionId === state.sessionId);
     const mins = Math.max(1, Math.round((Date.now() - state.sessionStartedAt) / 60000));
-    const song = getSetup().songTitle || "this song";
+    const song = ctx.getSetup().songTitle || "this song";
     $("reflectSummary").textContent =
       `${song} · ${mins} min · ${takes.length} take${takes.length === 1 ? "" : "s"} recorded.`;
     setStars(0);
@@ -1176,7 +1084,7 @@ export function initLegacy(store) {
     const takes = (await readTakes()).filter((t) => t.sessionId === state.sessionId);
     const session = {
       id: state.sessionId,
-      songTitle: getSetup().songTitle || "Practice session",
+      songTitle: ctx.getSetup().songTitle || "Practice session",
       startedAt: state.sessionStartedAt,
       endedAt: Date.now(),
       rating: state.reflectRating,
@@ -1203,11 +1111,6 @@ export function initLegacy(store) {
     const el = $(id);
     el.value = value || "";
     if (value) flashField(el);
-  }
-
-  function setManualOpen(open) {
-    $("manualSetup").classList.toggle("open", open);
-    $("manualToggle").setAttribute("aria-expanded", String(open));
   }
 
   async function runSearch() {
@@ -1245,8 +1148,8 @@ export function initLegacy(store) {
         ? `Filled “${name}”. Couldn’t find: ${missing.join(", ")} — add those manually if you like. Review below, then Start Session.`
         : `Filled “${name}” — review and tweak below, then Start Session.`;
 
-      setManualOpen(true); // reveal fields so the user can review the auto-fill
-      render(); // persists the filled setup
+      ctx.setManualOpen(true); // reveal fields so the user can review the auto-fill
+      ctx.saveSetup({ silent: true }); // persists the filled setup + re-renders
     } catch (err) {
       status.className = "search-status error";
       status.textContent = "Search needs the local server (run server.py). You can still fill everything in manually below.";
@@ -1260,30 +1163,14 @@ export function initLegacy(store) {
     $("songSearch").addEventListener("keydown", (event) => {
       if (event.key === "Enter") { event.preventDefault(); runSearch(); }
     });
-    $("manualToggle").addEventListener("click", () => {
-      setManualOpen(!$("manualSetup").classList.contains("open"));
-    });
-    $("saveSetup").addEventListener("click", saveSetup);
-    $("startSession").addEventListener("click", () => {
-      saveSetup({ silent: true });
-      startNewSession();
-      state.warmupIndex = 0;
-      setStep("warmups");
-      renderTakes();
-    });
-    $("editSetup").addEventListener("click", () => setStep("setup"));
-    for (const btn of document.querySelectorAll(".step[data-step]")) {
-      btn.addEventListener("click", () => setStep(btn.dataset.step));
-    }
     $("prevWarmup").addEventListener("click", () => {
-      state.warmupIndex = Math.max(0, state.warmupIndex - 1);
-      setStep("warmups");
+      store.dispatch({ type: "setWarmupIndex", payload: Math.max(0, store.get().warmupIndex - 1) });
     });
     $("nextWarmup").addEventListener("click", () => {
-      state.warmupIndex += 1;
-      setStep("warmups");
+      const total = ctx.getSetup().warmups.length;
+      store.dispatch({ type: "setWarmupIndex", payload: Math.min(Math.max(0, total - 1), store.get().warmupIndex + 1) });
     });
-    $("finishWarmups").addEventListener("click", () => setStep("song"));
+    $("finishWarmups").addEventListener("click", () => store.dispatch({ type: "setStep", payload: "song" }));
     $("recordBtn").addEventListener("click", startRecording);
     $("stopBtn").addEventListener("click", stopRecording);
     $("micSelect").addEventListener("change", onMicChange);
@@ -1349,20 +1236,20 @@ export function initLegacy(store) {
       await deleteTake(target.dataset.delete);
       await renderHistory();
     });
-    for (const id of fields) {
-      $(id).addEventListener("input", () => {
-        render();
-      });
-    }
-    for (const button of document.querySelectorAll("[data-tab]")) {
-      button.addEventListener("click", () => {
-        state.activeTab = button.dataset.tab;
-        render();
-      });
-    }
   }
 
-  loadSetup();
+  // Legacy services still owned by app.js, callable from migrated features.
+  ctx.setRecordingStatus = setRecordingStatus;
+  ctx.startNewSession = startNewSession;
+  ctx.renderTakes = renderTakes;
+
+  // Re-render the not-yet-migrated regions whenever navigation or setup changes.
+  store.subscribe((s) => `${s.step}|${s.activeTab}|${s.setupRev}|${s.warmupIndex}`, render);
+  // Leaving the sing stage stops a running live guide (was inside setStep()).
+  store.subscribe((s) => s.step, (step) => {
+    if (step !== "song" && state.liveGuide.running) stopLiveGuide();
+  });
+
   ensureSession();
   bindEvents();
   render();
