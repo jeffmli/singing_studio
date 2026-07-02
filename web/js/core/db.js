@@ -41,6 +41,16 @@ export async function readTakes() {
   });
 }
 
+export async function getTake(id) {
+  const db = await openDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("takes", "readonly");
+    const request = tx.objectStore("takes").get(id);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
 export async function deleteTake(id) {
   const db = await openDb();
   return new Promise((resolve, reject) => {

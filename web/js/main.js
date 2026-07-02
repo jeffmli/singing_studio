@@ -3,6 +3,7 @@ import { createStore } from "./core/store.js";
 import { initialState, reducers } from "./core/actions.js";
 import { initSetup } from "./features/setup.js";
 import { initWarmups } from "./features/warmups.js";
+import { initTakes } from "./features/takes.js";
 import { initLegacy } from "./app.js";
 
 const store = createStore(initialState, reducers);
@@ -13,7 +14,12 @@ const ctx = {};
 
 initSetup(store, ctx);
 initWarmups(store, ctx);
+initTakes(store, ctx);
 initLegacy(store, ctx);
 
 // Initial paint for regions the store hasn't ticked yet.
 ctx.renderWarmups();
+ctx.renderTakes().catch((error) => {
+  document.getElementById("takesList").innerHTML =
+    `<p class="empty-takes">Could not load takes: ${String(error.message).replace(/[&<>]/g, "")}</p>`;
+});

@@ -2,12 +2,11 @@ import { detectPitchHz, hzToMidi, noteName, medianOf } from "./lib/pitch.js";
 import { parseLrc, lyricLineAt } from "./lib/lyrics.js";
 import { micAudioConstraints, micOptions } from "./lib/mic.js";
 import { parseYouTubeId } from "./features/setup.js";
+import { writeTake, readTakes, getTake, writeSession, readSessions, deleteTake } from "./core/db.js";
 
 export function initLegacy(store, ctx) {
   const micKey = "singing-practice-mic-v1";
   const sessionKey = "singing-practice-current-session-v1";
-  const dbName = "singing-practice-recordings";
-  const dbVersion = 2;
   const state = {
     micDeviceId: localStorage.getItem(micKey) || "",
     mediaRecorder: null,
@@ -17,8 +16,6 @@ export function initLegacy(store, ctx) {
     meterAnimation: 0,
     recordStart: 0,
     timerInterval: 0,
-    sessionId: null,
-    sessionStartedAt: 0,
     reflectRating: 0,
     takeTempo: "Slow",
     playbackRate: 1,
@@ -174,24 +171,22 @@ export function initLegacy(store, ctx) {
   // ---------- Session lifecycle ----------
   function persistCurrentSession() {
     localStorage.setItem(sessionKey, JSON.stringify({
-      sessionId: state.sessionId,
-      sessionStartedAt: state.sessionStartedAt,
+      sessionId: store.get().sessionId,
+      sessionStartedAt: store.get().sessionStartedAt,
     }));
   }
 
   function ensureSession() {
     const saved = JSON.parse(localStorage.getItem(sessionKey) || "null");
     if (saved && saved.sessionId) {
-      state.sessionId = saved.sessionId;
-      state.sessionStartedAt = saved.sessionStartedAt || Date.now();
+      store.dispatch({ type: "setSession", payload: { id: saved.sessionId, startedAt: saved.sessionStartedAt || Date.now() } });
     } else {
       startNewSession();
     }
   }
 
   function startNewSession() {
-    state.sessionId = crypto.randomUUID();
-    state.sessionStartedAt = Date.now();
+    store.dispatch({ type: "setSession", payload: { id: crypto.randomUUID(), startedAt: Date.now() } });
     persistCurrentSession();
   }
 
@@ -244,105 +239,6 @@ export function initLegacy(store, ctx) {
     renderSong(ctx.getSetup());
   }
 
-  function openDb() {
-    return new Promise((resolve, reject) => {
-      const request = indexedDB.open(dbName, dbVersion);
-      request.onupgradeneeded = () => {
-        const db = request.result;
-        if (!db.objectStoreNames.contains("takes")) {
-          db.createObjectStore("takes", { keyPath: "id" });
-        }
-        if (!db.objectStoreNames.contains("sessions")) {
-          db.createObjectStore("sessions", { keyPath: "id" });
-        }
-      };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  async function writeTake(take) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction("takes", "readwrite");
-      tx.objectStore("takes").put(take);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  async function readTakes() {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction("takes", "readonly");
-      const request = tx.objectStore("takes").getAll();
-      request.onsuccess = () => resolve(request.result.sort((a, b) => b.createdAt - a.createdAt));
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  async function deleteTake(id) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction("takes", "readwrite");
-      tx.objectStore("takes").delete(id);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  async function writeSession(session) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction("sessions", "readwrite");
-      tx.objectStore("sessions").put(session);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    });
-  }
-
-  async function readSessions() {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction("sessions", "readonly");
-      const request = tx.objectStore("sessions").getAll();
-      request.onsuccess = () => resolve(request.result.sort((a, b) => b.endedAt - a.endedAt));
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  function buildTakeEl(take) {
-    const item = document.createElement("article");
-    item.className = "take";
-    const url = URL.createObjectURL(take.blob);
-    const date = new Date(take.createdAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-    const drillBits = [take.phraseFocus, take.takeTempo].filter(Boolean);
-    item.innerHTML = `
-      <div>
-        <strong>${escapeHtml(take.title || "Untitled take")}</strong>
-        <p class="meta">${date}${take.note ? " &middot; " + escapeHtml(take.note) : ""}</p>
-        ${drillBits.length ? `<p class="drill">${escapeHtml(drillBits.join(" · "))}</p>` : ""}
-      </div>
-      <audio controls src="${url}"></audio>
-      <div class="take-actions">
-        <button class="ghost analyze-btn" data-analyze="${escapeAttr(take.id)}">&#9835; Analyze pitch</button>
-        <a download="${escapeAttr(fileNameForTake(take))}" href="${url}"><button class="ghost">Download</button></a>
-        <button class="danger" data-delete="${escapeAttr(take.id)}">Delete</button>
-      </div>
-    `;
-    return item;
-  }
-
-  async function getTake(id) {
-    const db = await openDb();
-    return new Promise((resolve, reject) => {
-      const tx = db.transaction("takes", "readonly");
-      const request = tx.objectStore("takes").get(id);
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
-    });
-  }
-
   // ---------- Pitch analysis ----------
   function closeAnalyze() { document.body.classList.remove("analyze-open"); }
 
@@ -351,7 +247,7 @@ export function initLegacy(store, ctx) {
     if (!take) return;
     const videoUrl = take.originalUrl || ctx.getSetup().originalUrl;
     const body = $("analyzeBody");
-    closePanels();
+    ctx.closePanels();
     document.body.classList.add("analyze-open");
 
     if (!videoUrl) {
@@ -761,23 +657,6 @@ export function initLegacy(store, ctx) {
     }
   }
 
-  async function renderTakes() {
-    const list = $("takesList");
-    const all = await readTakes();
-    const takes = all.filter((take) => take.sessionId === state.sessionId);
-
-    const badge = $("takesCount");
-    badge.textContent = takes.length;
-    badge.classList.toggle("zero", takes.length === 0);
-
-    list.innerHTML = "";
-    if (!takes.length) {
-      list.innerHTML = "<p class=\"empty-takes\">No takes yet this session.<br>Record one while you sing.</p>";
-      return;
-    }
-    for (const take of takes) list.appendChild(buildTakeEl(take));
-  }
-
   function escapeHtml(value) {
     return String(value).replace(/[&<>"']/g, (char) => ({
       "&": "&amp;",
@@ -786,15 +665,6 @@ export function initLegacy(store, ctx) {
       "\"": "&quot;",
       "'": "&#039;",
     }[char]));
-  }
-
-  function escapeAttr(value) {
-    return escapeHtml(value).replace(/`/g, "&#096;");
-  }
-
-  function fileNameForTake(take) {
-    const safeTitle = String(take.title || "singing-take").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
-    return `${safeTitle || "singing-take"}-${new Date(take.createdAt).toISOString().replace(/[:.]/g, "-")}.webm`;
   }
 
   function updateMeter(stream) {
@@ -951,25 +821,19 @@ export function initLegacy(store, ctx) {
       takeTempo: state.takeTempo,
       blob,
       createdAt: Date.now(),
-      sessionId: state.sessionId,
+      sessionId: store.get().sessionId,
       originalUrl: setup.originalUrl || "",
     };
     await writeTake(take);
     $("takeNote").value = "";
     setRecordingStatus("Take saved. Open “This session” to review or download.");
-    await renderTakes();
+    await ctx.renderTakes();
   }
 
-  // ---------- Panels (takes drawer, history, reflection) ----------
-  function closePanels() {
-    document.body.classList.remove("takes-open", "history-open", "reflect-open", "analyze-open");
-  }
-  function openDrawer() { closePanels(); document.body.classList.add("takes-open"); }
-  function closeDrawer() { document.body.classList.remove("takes-open"); }
-
+  // ---------- Panels: open/close helpers now live in features/takes.js ----------
   async function openHistory() {
     await renderHistory();
-    closePanels();
+    ctx.closePanels();
     document.body.classList.add("history-open");
   }
   function closeHistory() { document.body.classList.remove("history-open"); }
@@ -1018,7 +882,7 @@ export function initLegacy(store, ctx) {
       if (takes.length) {
         const wrap = document.createElement("div");
         wrap.className = "sc-takes";
-        for (const take of takes) wrap.appendChild(buildTakeEl(take));
+        for (const take of takes) wrap.appendChild(ctx.buildTakeEl(take));
         card.appendChild(wrap);
       }
       list.appendChild(card);
@@ -1033,15 +897,15 @@ export function initLegacy(store, ctx) {
   }
 
   async function openReflect() {
-    const takes = (await readTakes()).filter((t) => t.sessionId === state.sessionId);
-    const mins = Math.max(1, Math.round((Date.now() - state.sessionStartedAt) / 60000));
+    const takes = (await readTakes()).filter((t) => t.sessionId === store.get().sessionId);
+    const mins = Math.max(1, Math.round((Date.now() - store.get().sessionStartedAt) / 60000));
     const song = ctx.getSetup().songTitle || "this song";
     $("reflectSummary").textContent =
       `${song} · ${mins} min · ${takes.length} take${takes.length === 1 ? "" : "s"} recorded.`;
     setStars(0);
     $("reflectWins").value = "";
     $("reflectFocus").value = "";
-    closePanels();
+    ctx.closePanels();
     document.body.classList.add("reflect-open");
   }
   function closeReflect() { document.body.classList.remove("reflect-open"); }
@@ -1055,11 +919,11 @@ export function initLegacy(store, ctx) {
   }
 
   async function saveSession() {
-    const takes = (await readTakes()).filter((t) => t.sessionId === state.sessionId);
+    const takes = (await readTakes()).filter((t) => t.sessionId === store.get().sessionId);
     const session = {
-      id: state.sessionId,
+      id: store.get().sessionId,
       songTitle: ctx.getSetup().songTitle || "Practice session",
-      startedAt: state.sessionStartedAt,
+      startedAt: store.get().sessionStartedAt,
       endedAt: Date.now(),
       rating: state.reflectRating,
       wins: $("reflectWins").value.trim(),
@@ -1069,7 +933,7 @@ export function initLegacy(store, ctx) {
     await writeSession(session);
     startNewSession();   // fresh session for next time
     closeReflect();
-    await renderTakes();
+    await ctx.renderTakes();
     showToast("Session saved to your history ✓");
   }
 
@@ -1147,9 +1011,6 @@ export function initLegacy(store, ctx) {
     $("refreshGuide").addEventListener("click", refreshLiveGuide);
     $("startGuide").addEventListener("click", startLiveGuide);
     $("stopGuide").addEventListener("click", stopLiveGuide);
-    $("takesToggle").addEventListener("click", openDrawer);
-    $("closeDrawer").addEventListener("click", closeDrawer);
-    $("drawerOverlay").addEventListener("click", closePanels);
     $("historyBtn").addEventListener("click", openHistory);
     $("closeHistory").addEventListener("click", closeHistory);
     $("endSessionBtn").addEventListener("click", openReflect);
@@ -1181,18 +1042,9 @@ export function initLegacy(store, ctx) {
       state.lyricsOverlay.hidden = !state.lyricsOverlay.hidden;
       renderLyricOverlay();
     });
-    document.addEventListener("keydown", (e) => { if (e.key === "Escape") closePanels(); });
     $("analyzeClose").addEventListener("click", closeAnalyze);
     $("analyzeModal").addEventListener("click", (event) => {
       if (event.target === $("analyzeModal")) closeAnalyze();
-    });
-    $("takesList").addEventListener("click", async (event) => {
-      const analyzeBtn = event.target.closest("[data-analyze]");
-      if (analyzeBtn) { analyzeTake(analyzeBtn.dataset.analyze); return; }
-      const target = event.target.closest("[data-delete]");
-      if (!target) return;
-      await deleteTake(target.dataset.delete);
-      await renderTakes();
     });
     $("historyList").addEventListener("click", async (event) => {
       const analyzeBtn = event.target.closest("[data-analyze]");
@@ -1207,9 +1059,9 @@ export function initLegacy(store, ctx) {
   // Legacy services still owned by app.js, callable from migrated features.
   ctx.setRecordingStatus = setRecordingStatus;
   ctx.startNewSession = startNewSession;
-  ctx.renderTakes = renderTakes;
   ctx.showWarmupVideo = showWarmupVideo;
   ctx.applyVideo = applyVideo;
+  ctx.analyzeTake = analyzeTake;
 
   // Re-render the not-yet-migrated regions whenever navigation or setup changes.
   store.subscribe((s) => `${s.step}|${s.activeTab}|${s.setupRev}`, render);
@@ -1223,9 +1075,6 @@ export function initLegacy(store, ctx) {
   render();
   refreshMicList();  // populate mic list (labels fill in after first permission grant)
   initPlayers(); // in case the YT API loaded before this script ran
-  renderTakes().catch((error) => {
-    $("takesList").innerHTML = `<p class="empty-takes">Could not load takes: ${escapeHtml(error.message)}</p>`;
-  });
 
   // Test hook: lets the smoke test simulate an un-embeddable video.
   window.__studioTest = { forceSongError: () => onSongError({ data: 150 }) };
