@@ -1,4 +1,5 @@
-// web/js/main.js
+// web/js/main.js — bootstrap: build the store, mount every feature, then do
+// the one-time initial paint.
 import { createStore } from "./core/store.js";
 import { initialState, reducers } from "./core/actions.js";
 import { initSetup } from "./features/setup.js";
@@ -10,12 +11,11 @@ import { initRecording } from "./features/recording.js";
 import { initAnalysis } from "./features/analysis.js";
 import { initHistory } from "./features/history.js";
 import { initLiveGuide } from "./features/live-guide.js";
-import { initLegacy } from "./app.js";
 
 const store = createStore(initialState, reducers);
 
-// Shared service registry: each feature registers its public functions here so
-// cross-feature calls keep working while code migrates out of the legacy app.js.
+// Shared service registry: each feature registers its public functions here,
+// keeping cross-feature calls explicit on one object.
 const ctx = {};
 
 initSetup(store, ctx);
@@ -27,7 +27,6 @@ initRecording(store, ctx);
 initAnalysis(store, ctx);
 initHistory(store, ctx);
 initLiveGuide(store, ctx);
-initLegacy(store, ctx);
 
 // Initial paint for regions the store hasn't ticked yet.
 ctx.renderWarmups();
