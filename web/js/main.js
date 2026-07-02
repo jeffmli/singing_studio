@@ -7,6 +7,7 @@ import { initTakes } from "./features/takes.js";
 import { initPlayers } from "./features/players.js";
 import { initSearch } from "./features/search.js";
 import { initRecording } from "./features/recording.js";
+import { initAnalysis } from "./features/analysis.js";
 import { initLegacy } from "./app.js";
 
 const store = createStore(initialState, reducers);
@@ -21,6 +22,7 @@ initTakes(store, ctx);
 initPlayers(store, ctx);
 initSearch(store, ctx);
 initRecording(store, ctx);
+initAnalysis(store, ctx);
 initLegacy(store, ctx);
 
 // Initial paint for regions the store hasn't ticked yet.
