@@ -18,7 +18,6 @@ export function initLegacy(store, ctx) {
     timerInterval: 0,
     reflectRating: 0,
     takeTempo: "Slow",
-    playbackRate: 1,
     lyricsOverlay: {
       hidden: false,
       raf: 0,
@@ -35,8 +34,6 @@ export function initLegacy(store, ctx) {
       startedAt: 0,
       fallbackSongTime: 0,
     },
-    currentSongKind: "original",
-    triedVideos: { original: new Set(), instrumental: new Set(), lyricVideo: new Set() },
   };
 
   const $ = (id) => document.getElementById(id);
@@ -47,126 +44,6 @@ export function initLegacy(store, ctx) {
       .map((line) => line.trim())
       .filter(Boolean);
   }
-
-  function getSongDuration() {
-    const player = players.song;
-    if (player && typeof player.getDuration === "function") {
-      try {
-        const duration = player.getDuration();
-        if (Number.isFinite(duration) && duration > 0) return duration;
-      } catch (e) {}
-    }
-    const ref = state.liveGuide.ref;
-    if (ref && ref.times && ref.times.length) return ref.times[ref.times.length - 1] || 0;
-    return 0;
-  }
-
-  function applyPlaybackRate() {
-    const player = players.song;
-    if (!player || typeof player.setPlaybackRate !== "function") return;
-    try {
-      player.setPlaybackRate(state.playbackRate);
-    } catch (e) {}
-  }
-
-  // ---------- YouTube IFrame players (with embed-error fallback) ----------
-  const players = { warmup: null, song: null };
-  const playerState = {
-    warmup: { ready: false, currentId: null, wantId: undefined },
-    song: { ready: false, currentId: null, wantId: undefined },
-  };
-  const SONG_KINDS = ["original", "instrumental", "lyricVideo"];
-  const KIND_FIELD = { original: "originalUrl", instrumental: "instrumentalUrl", lyricVideo: "lyricVideoUrl" };
-
-  function makePlayer(which, onError) {
-    return new YT.Player(which === "warmup" ? "warmupFrame" : "songFrame", {
-      playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
-      events: {
-        onReady: () => {
-          playerState[which].ready = true;
-          if (playerState[which].wantId !== undefined) applyVideo(which, playerState[which].wantId);
-          if (which === "song") applyPlaybackRate();
-        },
-        onError,
-      },
-    });
-  }
-
-  function initPlayers() {
-    if (!window.YT || !window.YT.Player || players.song) return;
-    players.warmup = makePlayer("warmup", onWarmupError);
-    players.song = makePlayer("song", onSongError);
-  }
-
-  function applyVideo(which, videoId) {
-    const ps = playerState[which];
-    const player = players[which];
-    if (!player || !ps.ready) { ps.wantId = videoId; return; }
-    if (!videoId) {
-      if (ps.currentId) { try { player.stopVideo(); } catch (e) {} }
-      ps.currentId = null;
-      return;
-    }
-    if (ps.currentId === videoId) return;
-    ps.currentId = videoId;
-    try { player.cueVideoById(videoId); } catch (e) {}
-    if (which === "song") window.setTimeout(applyPlaybackRate, 250);
-  }
-
-  function showWarmupVideo(url) {
-    const id = parseYouTubeId(url);
-    $("warmupPlaceholder").classList.toggle("hidden", Boolean(id));
-    applyVideo("warmup", id || "");
-  }
-
-  function showSongVideo(kind, url) {
-    const id = parseYouTubeId(url);
-    $("songPlaceholder").classList.toggle("hidden", Boolean(id));
-    state.currentSongKind = kind;
-    if (id && state.triedVideos[kind]) state.triedVideos[kind].add(id);
-    applyVideo("song", id || "");
-  }
-
-  function showSongPlaceholder(message) {
-    const ph = $("songPlaceholder");
-    ph.querySelector("div").innerHTML = `<div class="pi">&#9888;</div>${escapeHtml(message)}`;
-    ph.classList.remove("hidden");
-    applyVideo("song", "");
-  }
-
-  function onWarmupError() {
-    $("warmupStatus").textContent = "This warmup video can't be embedded — try Next, or open it on YouTube.";
-  }
-
-  async function onSongError(event) {
-    const kind = state.currentSongKind;
-    if (!SONG_KINDS.includes(kind)) return;
-    if (playerState.song.currentId) state.triedVideos[kind].add(playerState.song.currentId);
-
-    const title = ctx.getSetup().songTitle;
-    if (!title) { showSongPlaceholder("This video can't be embedded. Paste another link in Setup."); return; }
-
-    showToast("That video couldn't be embedded — finding another…");
-    try {
-      const exclude = Array.from(state.triedVideos[kind]).join(",");
-      const res = await fetch(`/api/alt?q=${encodeURIComponent(title)}&kind=${kind}&exclude=${encodeURIComponent(exclude)}`);
-      const data = await res.json();
-      const alt = data && data.result;
-      if (alt && alt.url) {
-        $(KIND_FIELD[kind]).value = alt.url;
-        ctx.saveSetup({ silent: true });
-        playerState.song.currentId = null; // force reload even if ids coincide
-        showSongVideo(kind, alt.url);
-        showToast("Switched to another video that plays ✓");
-      } else {
-        showSongPlaceholder("Couldn't find an embeddable video — paste one in Setup.");
-      }
-    } catch (e) {
-      showSongPlaceholder("Couldn't fetch an alternate video — paste one in Setup.");
-    }
-  }
-
-  window.onYouTubeIframeAPIReady = initPlayers;
 
   // ---------- Session lifecycle ----------
   function persistCurrentSession() {
@@ -194,31 +71,6 @@ export function initLegacy(store, ctx) {
     $("recordingStatus").textContent = message;
   }
 
-  function renderSong(setup) {
-    const activeTab = store.get().activeTab;
-    $("songHeading").textContent = setup.songTitle ? setup.songTitle : "Song Practice";
-    $("lyricsPane").textContent = setup.lyrics || "Paste lyrics in Setup to see them here.";
-    for (const button of document.querySelectorAll("[data-tab]")) {
-      button.classList.toggle("active", button.dataset.tab === activeTab);
-    }
-
-    const showLyrics = activeTab === "lyrics";
-    $("videoPane").classList.toggle("hidden", showLyrics);
-    $("lyricsPane").classList.toggle("hidden", !showLyrics);
-
-    const videoMap = {
-      original: setup.originalUrl,
-      instrumental: setup.instrumentalUrl,
-      lyricVideo: setup.lyricVideoUrl,
-    };
-    if (store.get().step === "song" && !showLyrics) {
-      showSongVideo(activeTab, videoMap[activeTab] || "");
-    } else {
-      applyVideo("song", "");
-    }
-    renderLyricOverlay();
-  }
-
   function renderLyricOverlay() {
     const overlay = $("lyricOverlay");
     if (!overlay) return;
@@ -233,10 +85,6 @@ export function initLegacy(store, ctx) {
     }
 
     $("overlayBody").textContent = lines.join("\n");
-  }
-
-  function render() {
-    renderSong(ctx.getSetup());
   }
 
   // ---------- Pitch analysis ----------
@@ -384,18 +232,13 @@ export function initLegacy(store, ctx) {
   }
 
   function currentSongTime() {
-    const player = players.song;
-    if (player && typeof player.getCurrentTime === "function") {
-      try {
-        const t = player.getCurrentTime();
-        if (Number.isFinite(t) && t > 0) {
-          state.liveGuide.fallbackSongTime = t;
-          return t;
-        }
-      } catch (e) {}
+    const t = ctx.songPlayerTime();
+    if (t != null) {
+      state.liveGuide.fallbackSongTime = t;
+      return t;
     }
     if (!state.liveGuide.startedAt) return state.liveGuide.fallbackSongTime || 0;
-    return state.liveGuide.fallbackSongTime + ((Date.now() - state.liveGuide.startedAt) / 1000) * state.playbackRate;
+    return state.liveGuide.fallbackSongTime + ((Date.now() - state.liveGuide.startedAt) / 1000) * store.get().playbackRate;
   }
 
   async function startLiveGuide() {
@@ -1028,16 +871,6 @@ export function initLegacy(store, ctx) {
         $("takeNote").placeholder = `Note for ${state.takeTempo.toLowerCase()} take: what to improve next time?`;
       });
     }
-    for (const button of document.querySelectorAll("[data-rate]")) {
-      button.addEventListener("click", () => {
-        state.playbackRate = Number(button.dataset.rate) || 1;
-        for (const b of document.querySelectorAll("[data-rate]")) {
-          b.classList.toggle("active", b === button);
-        }
-        applyPlaybackRate();
-        setGuideStatus(`Playback pace set to ${Math.round(state.playbackRate * 100)}%.`);
-      });
-    }
     $("lyricToggle").addEventListener("click", () => {
       state.lyricsOverlay.hidden = !state.lyricsOverlay.hidden;
       renderLyricOverlay();
@@ -1059,12 +892,11 @@ export function initLegacy(store, ctx) {
   // Legacy services still owned by app.js, callable from migrated features.
   ctx.setRecordingStatus = setRecordingStatus;
   ctx.startNewSession = startNewSession;
-  ctx.showWarmupVideo = showWarmupVideo;
-  ctx.applyVideo = applyVideo;
   ctx.analyzeTake = analyzeTake;
+  ctx.showToast = showToast;
+  ctx.setGuideStatus = setGuideStatus;
+  ctx.renderLyricOverlay = renderLyricOverlay;
 
-  // Re-render the not-yet-migrated regions whenever navigation or setup changes.
-  store.subscribe((s) => `${s.step}|${s.activeTab}|${s.setupRev}`, render);
   // Leaving the sing stage stops a running live guide (was inside setStep()).
   store.subscribe((s) => s.step, (step) => {
     if (step !== "song" && state.liveGuide.running) stopLiveGuide();
@@ -1072,10 +904,5 @@ export function initLegacy(store, ctx) {
 
   ensureSession();
   bindEvents();
-  render();
   refreshMicList();  // populate mic list (labels fill in after first permission grant)
-  initPlayers(); // in case the YT API loaded before this script ran
-
-  // Test hook: lets the smoke test simulate an un-embeddable video.
-  window.__studioTest = { forceSongError: () => onSongError({ data: 150 }) };
 }
