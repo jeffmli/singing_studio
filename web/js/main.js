@@ -6,6 +6,7 @@ import { initWarmups } from "./features/warmups.js";
 import { initTakes } from "./features/takes.js";
 import { initPlayers } from "./features/players.js";
 import { initSearch } from "./features/search.js";
+import { initRecording } from "./features/recording.js";
 import { initLegacy } from "./app.js";
 
 const store = createStore(initialState, reducers);
@@ -19,11 +20,13 @@ initWarmups(store, ctx);
 initTakes(store, ctx);
 initPlayers(store, ctx);
 initSearch(store, ctx);
+initRecording(store, ctx);
 initLegacy(store, ctx);
 
 // Initial paint for regions the store hasn't ticked yet.
 ctx.renderWarmups();
 ctx.renderSong();
+ctx.refreshMicList(); // populate mic list (labels fill in after first permission grant)
 ctx.renderTakes().catch((error) => {
   document.getElementById("takesList").innerHTML =
     `<p class="empty-takes">Could not load takes: ${String(error.message).replace(/[&<>]/g, "")}</p>`;

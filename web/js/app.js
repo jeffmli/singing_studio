@@ -5,19 +5,9 @@ import { parseYouTubeId } from "./features/setup.js";
 import { writeTake, readTakes, getTake, writeSession, readSessions, deleteTake } from "./core/db.js";
 
 export function initLegacy(store, ctx) {
-  const micKey = "singing-practice-mic-v1";
   const sessionKey = "singing-practice-current-session-v1";
   const state = {
-    micDeviceId: localStorage.getItem(micKey) || "",
-    mediaRecorder: null,
-    audioChunks: [],
-    audioStream: null,
-    audioContext: null,
-    meterAnimation: 0,
-    recordStart: 0,
-    timerInterval: 0,
     reflectRating: 0,
-    takeTempo: "Slow",
     lyricsOverlay: {
       hidden: false,
       raf: 0,
@@ -65,10 +55,6 @@ export function initLegacy(store, ctx) {
   function startNewSession() {
     store.dispatch({ type: "setSession", payload: { id: crypto.randomUUID(), startedAt: Date.now() } });
     persistCurrentSession();
-  }
-
-  function setRecordingStatus(message) {
-    $("recordingStatus").textContent = message;
   }
 
   function renderLyricOverlay() {
@@ -252,14 +238,14 @@ export function initLegacy(store, ctx) {
     }
     try {
       const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-      const stream = await openMic();
-      await refreshMicList();
-      const ctx = new AudioContextClass();
-      const analyser = ctx.createAnalyser();
+      const stream = await ctx.openMic();
+      await ctx.refreshMicList();
+      const audioCtx = new AudioContextClass();
+      const analyser = audioCtx.createAnalyser();
       analyser.fftSize = 2048;
-      ctx.createMediaStreamSource(stream).connect(analyser);
+      audioCtx.createMediaStreamSource(stream).connect(analyser);
       state.liveGuide.stream = stream;
-      state.liveGuide.audioContext = ctx;
+      state.liveGuide.audioContext = audioCtx;
       state.liveGuide.analyser = analyser;
       state.liveGuide.data = new Float32Array(analyser.fftSize);
       state.liveGuide.running = true;
@@ -510,170 +496,6 @@ export function initLegacy(store, ctx) {
     }[char]));
   }
 
-  function updateMeter(stream) {
-    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-    if (!AudioContextClass) return;
-    state.audioContext = new AudioContextClass();
-    const source = state.audioContext.createMediaStreamSource(stream);
-    const analyser = state.audioContext.createAnalyser();
-    const data = new Uint8Array(analyser.frequencyBinCount);
-    source.connect(analyser);
-
-    const tick = () => {
-      analyser.getByteFrequencyData(data);
-      const peak = data.reduce((max, value) => Math.max(max, value), 0);
-      $("meterBar").style.width = `${Math.min(100, Math.round((peak / 255) * 100))}%`;
-      state.meterAnimation = requestAnimationFrame(tick);
-    };
-    tick();
-  }
-
-  function formatTime(totalSeconds) {
-    const m = Math.floor(totalSeconds / 60);
-    const s = totalSeconds % 60;
-    return `${m}:${String(s).padStart(2, "0")}`;
-  }
-
-  function startTimer() {
-    state.recordStart = Date.now();
-    const update = () => {
-      const secs = Math.floor((Date.now() - state.recordStart) / 1000);
-      $("recTimer").lastChild.textContent = formatTime(secs);
-    };
-    update();
-    state.timerInterval = setInterval(update, 250);
-  }
-
-  function stopTimer() {
-    clearInterval(state.timerInterval);
-    state.timerInterval = 0;
-  }
-
-  // Prefer Opus at a music-grade bitrate; fall back to the browser default if
-  // the type isn't supported. 128 kbps mono is plenty for a vocal take and a big
-  // step up from MediaRecorder's low default.
-  function pickRecorderOptions() {
-    const opts = { audioBitsPerSecond: 128000 };
-    const canType = window.MediaRecorder && MediaRecorder.isTypeSupported;
-    for (const type of ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"]) {
-      if (canType && MediaRecorder.isTypeSupported(type)) { opts.mimeType = type; break; }
-    }
-    return opts;
-  }
-
-  // Open the mic with singing-tuned constraints, selecting the chosen device.
-  // Falls back to the default device if the exact one is gone/unavailable.
-  async function openMic() {
-    try {
-      return await navigator.mediaDevices.getUserMedia(micAudioConstraints(state.micDeviceId));
-    } catch (err) {
-      if (state.micDeviceId && (err.name === "OverconstrainedError" || err.name === "NotFoundError")) {
-        state.micDeviceId = "";
-        localStorage.removeItem(micKey);
-        return navigator.mediaDevices.getUserMedia(micAudioConstraints(""));
-      }
-      throw err;
-    }
-  }
-
-  // Populate the mic <select>. Labels only appear once permission is granted, so
-  // this is called again after the first successful capture and on devicechange.
-  async function refreshMicList() {
-    const sel = $("micSelect");
-    if (!sel || !navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) return;
-    let devices = [];
-    try {
-      devices = await navigator.mediaDevices.enumerateDevices();
-    } catch { return; }
-    const opts = micOptions(devices, state.micDeviceId);
-    sel.innerHTML = "";
-    for (const o of opts) {
-      const el = document.createElement("option");
-      el.value = o.value;
-      el.textContent = o.label;
-      el.selected = o.selected;
-      sel.appendChild(el);
-    }
-    // Keep state in sync if the saved device vanished (options fell back to Default).
-    if (state.micDeviceId && !opts.some((o) => o.value === state.micDeviceId)) {
-      state.micDeviceId = "";
-      localStorage.removeItem(micKey);
-    }
-  }
-
-  function onMicChange() {
-    state.micDeviceId = $("micSelect").value || "";
-    if (state.micDeviceId) localStorage.setItem(micKey, state.micDeviceId);
-    else localStorage.removeItem(micKey);
-    setRecordingStatus(
-      state.micDeviceId
-        ? "Microphone set. Press Record to sing your take."
-        : "Using the default microphone. Press Record to sing your take."
-    );
-  }
-
-  async function startRecording() {
-    if (!navigator.mediaDevices || !window.MediaRecorder) {
-      setRecordingStatus("Recording is not supported in this browser.");
-      return;
-    }
-    try {
-      const stream = await openMic();
-      await refreshMicList();  // labels are available now that permission is granted
-      state.audioStream = stream;
-      state.audioChunks = [];
-      state.mediaRecorder = new MediaRecorder(stream, pickRecorderOptions());
-      state.mediaRecorder.ondataavailable = (event) => {
-        if (event.data && event.data.size) state.audioChunks.push(event.data);
-      };
-      state.mediaRecorder.onstop = saveRecording;
-      state.mediaRecorder.start();
-      $("recordBtn").disabled = true;
-      $("stopBtn").disabled = false;
-      $("transportBar").classList.add("recording");
-      setRecordingStatus("Recording now — sing your take, then press Stop.");
-      startTimer();
-      updateMeter(stream);
-    } catch (error) {
-      setRecordingStatus(`Microphone unavailable: ${error.message}`);
-    }
-  }
-
-  async function stopRecording() {
-    if (state.mediaRecorder && state.mediaRecorder.state !== "inactive") {
-      state.mediaRecorder.stop();
-    }
-    $("recordBtn").disabled = false;
-    $("stopBtn").disabled = true;
-    $("transportBar").classList.remove("recording");
-    stopTimer();
-    if (state.meterAnimation) cancelAnimationFrame(state.meterAnimation);
-    $("meterBar").style.width = "0%";
-    if (state.audioContext) await state.audioContext.close();
-    if (state.audioStream) state.audioStream.getTracks().forEach((track) => track.stop());
-  }
-
-  async function saveRecording() {
-    const setup = ctx.getSetup();
-    const blob = new Blob(state.audioChunks, { type: "audio/webm" });
-    const take = {
-      id: crypto.randomUUID(),
-      title: setup.songTitle || "Singing Take",
-      note: $("takeNote").value.trim(),
-      phraseFocus: setup.phraseFocus || "",
-      takeTempo: state.takeTempo,
-      blob,
-      createdAt: Date.now(),
-      sessionId: store.get().sessionId,
-      originalUrl: setup.originalUrl || "",
-    };
-    await writeTake(take);
-    $("takeNote").value = "";
-    setRecordingStatus("Take saved. Open “This session” to review or download.");
-    await ctx.renderTakes();
-  }
-
-  // ---------- Panels: open/close helpers now live in features/takes.js ----------
   async function openHistory() {
     await renderHistory();
     ctx.closePanels();
@@ -781,12 +603,6 @@ export function initLegacy(store, ctx) {
   }
 
   function bindEvents() {
-    $("recordBtn").addEventListener("click", startRecording);
-    $("stopBtn").addEventListener("click", stopRecording);
-    $("micSelect").addEventListener("change", onMicChange);
-    if (navigator.mediaDevices && "ondevicechange" in navigator.mediaDevices) {
-      navigator.mediaDevices.addEventListener("devicechange", () => { refreshMicList(); });
-    }
     $("prepareGuide").addEventListener("click", prepareLiveGuide);
     $("refreshGuide").addEventListener("click", refreshLiveGuide);
     $("startGuide").addEventListener("click", startLiveGuide);
@@ -798,15 +614,6 @@ export function initLegacy(store, ctx) {
     $("reflectSave").addEventListener("click", saveSession);
     for (const star of document.querySelectorAll("#reflectStars .star")) {
       star.addEventListener("click", () => setStars(Number(star.dataset.rating)));
-    }
-    for (const button of document.querySelectorAll("[data-tempo]")) {
-      button.addEventListener("click", () => {
-        state.takeTempo = button.dataset.tempo;
-        for (const b of document.querySelectorAll("[data-tempo]")) {
-          b.classList.toggle("active", b === button);
-        }
-        $("takeNote").placeholder = `Note for ${state.takeTempo.toLowerCase()} take: what to improve next time?`;
-      });
     }
     $("lyricToggle").addEventListener("click", () => {
       state.lyricsOverlay.hidden = !state.lyricsOverlay.hidden;
@@ -827,7 +634,6 @@ export function initLegacy(store, ctx) {
   }
 
   // Legacy services still owned by app.js, callable from migrated features.
-  ctx.setRecordingStatus = setRecordingStatus;
   ctx.startNewSession = startNewSession;
   ctx.analyzeTake = analyzeTake;
   ctx.showToast = showToast;
@@ -841,5 +647,4 @@ export function initLegacy(store, ctx) {
 
   ensureSession();
   bindEvents();
-  refreshMicList();  // populate mic list (labels fill in after first permission grant)
 }
