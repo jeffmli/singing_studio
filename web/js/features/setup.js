@@ -4,6 +4,7 @@
 // Owns "singing-practice-setup-v1" and "singing-song-library-v1".
 import { byId as $ } from "../core/dom.js";
 import { upsertSong } from "../lib/song-library.js";
+import { WARMUP_LIBRARY, warmupForUrl, warmupLabelForUrl } from "../lib/warmups.js";
 
 const setupKey = "singing-practice-setup-v1";
 const libraryKey = "singing-song-library-v1";
@@ -12,6 +13,16 @@ const defaultPracticeGoal = "Improve pitch";
 
 function valueOf(id) {
   return $(id)?.value ?? "";
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, (char) => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#039;",
+  }[char]));
 }
 
 export function parseYouTubeId(value) {
@@ -31,10 +42,74 @@ export function parseYouTubeId(value) {
 }
 
 export function initSetup(store, ctx) {
+  function readWarmupQueue() {
+    return valueOf("warmupLinks").split(/\n+/).map((line) => line.trim()).filter(Boolean);
+  }
+
+  function writeWarmupQueue(urls, { silent = false } = {}) {
+    const deduped = [];
+    for (const url of urls.map((u) => String(u || "").trim()).filter(Boolean)) {
+      if (!deduped.includes(url)) deduped.push(url);
+    }
+    if ($("warmupLinks")) $("warmupLinks").value = deduped.join("\n");
+    renderWarmupQueue();
+    if (!silent) saveSetup({ silent: true });
+  }
+
+  function renderWarmupLibrary() {
+    const list = $("warmupLibrary");
+    if (!list) return;
+    list.innerHTML = "";
+    const selected = new Set(readWarmupQueue());
+    for (const item of WARMUP_LIBRARY) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "warmup-library-item";
+      button.dataset.addWarmup = item.url;
+      button.disabled = selected.has(item.url);
+      button.innerHTML = `
+        <span class="wl-title">${escapeHtml(item.title)}</span>
+        <span class="wl-meta">${escapeHtml(item.type)} · ${escapeHtml(item.note || "")}</span>
+      `;
+      list.appendChild(button);
+    }
+  }
+
+  function renderWarmupQueue() {
+    const list = $("warmupQueue");
+    if (!list) return;
+    const urls = readWarmupQueue();
+    list.innerHTML = "";
+    if (!urls.length) {
+      list.innerHTML = "<p class=\"warmup-empty\">Choose warm-ups from the library or add a custom URL.</p>";
+      renderWarmupLibrary();
+      return;
+    }
+    urls.forEach((url, index) => {
+      const item = warmupForUrl(url);
+      const row = document.createElement("div");
+      row.className = "warmup-queue-item";
+      row.dataset.warmupUrl = url;
+      row.innerHTML = `
+        <div class="wq-main">
+          <strong>${escapeHtml(warmupLabelForUrl(url))}</strong>
+          <span>${escapeHtml(item ? item.type : url)}</span>
+        </div>
+        <div class="wq-actions">
+          <button type="button" class="ghost" data-move-up ${index === 0 ? "disabled" : ""}>Up</button>
+          <button type="button" class="ghost" data-move-down ${index === urls.length - 1 ? "disabled" : ""}>Down</button>
+          <button type="button" class="danger" data-remove-warmup>Remove</button>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+    renderWarmupLibrary();
+  }
+
   function getSetup() {
     return {
       songTitle: valueOf("songTitle").trim(),
-      warmups: valueOf("warmupLinks").split(/\n+/).map((line) => line.trim()).filter(Boolean),
+      warmups: readWarmupQueue(),
       originalUrl: valueOf("originalUrl").trim(),
       instrumentalUrl: valueOf("instrumentalUrl").trim(),
       lyricVideoUrl: valueOf("lyricVideoUrl").trim(),
@@ -66,7 +141,7 @@ export function initSetup(store, ctx) {
     };
     const saved = JSON.parse(localStorage.getItem(setupKey) || "null") || fallback;
     $("songTitle").value = saved.songTitle || "";
-    $("warmupLinks").value = (saved.warmups || []).join("\n");
+    writeWarmupQueue(saved.warmups || [], { silent: true });
     $("originalUrl").value = saved.originalUrl || "";
     $("instrumentalUrl").value = saved.instrumentalUrl || "";
     $("lyricVideoUrl").value = saved.lyricVideoUrl || "";
@@ -92,9 +167,7 @@ export function initSetup(store, ctx) {
     $("lyricsInput").value = song.lyrics || "";
     $("syncedLyricsData").value = song.syncedLyrics || "";
     setPracticeGoal(song.practiceGoal || defaultPracticeGoal, { silent: true });
-    if (Array.isArray(song.warmups) && song.warmups.length) {
-      $("warmupLinks").value = song.warmups.join("\n");
-    }
+    writeWarmupQueue(Array.isArray(song.warmups) ? song.warmups : [], { silent: true });
     saveSetup({ silent: true });
   }
 
@@ -181,8 +254,40 @@ export function initSetup(store, ctx) {
   $("manualToggle").addEventListener("click", () => {
     setManualOpen(!$("manualSetup").classList.contains("open"));
   });
+  $("warmupLibrary")?.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-add-warmup]");
+    if (!button) return;
+    writeWarmupQueue([...readWarmupQueue(), button.dataset.addWarmup]);
+  });
+  $("warmupQueue")?.addEventListener("click", (event) => {
+    const row = event.target.closest("[data-warmup-url]");
+    if (!row) return;
+    const urls = readWarmupQueue();
+    const index = urls.indexOf(row.dataset.warmupUrl);
+    if (index < 0) return;
+    if (event.target.closest("[data-remove-warmup]")) {
+      urls.splice(index, 1);
+    } else if (event.target.closest("[data-move-up]") && index > 0) {
+      [urls[index - 1], urls[index]] = [urls[index], urls[index - 1]];
+    } else if (event.target.closest("[data-move-down]") && index < urls.length - 1) {
+      [urls[index], urls[index + 1]] = [urls[index + 1], urls[index]];
+    } else {
+      return;
+    }
+    writeWarmupQueue(urls);
+  });
+  $("warmupCustomAdd")?.addEventListener("click", () => {
+    const input = $("warmupCustomUrl");
+    const url = input?.value.trim();
+    if (!url) return;
+    writeWarmupQueue([...readWarmupQueue(), url]);
+    input.value = "";
+  });
   for (const id of fields) {
-    $(id)?.addEventListener("input", () => saveSetup({ silent: true }));
+    $(id)?.addEventListener("input", () => {
+      if (id === "warmupLinks") renderWarmupQueue();
+      saveSetup({ silent: true });
+    });
   }
   for (const button of document.querySelectorAll("[data-practice-goal]")) {
     button.addEventListener("click", () => setPracticeGoal(button.dataset.practiceGoal));
@@ -197,8 +302,10 @@ export function initSetup(store, ctx) {
   ctx.saveSetup = saveSetup;
   ctx.setManualOpen = setManualOpen;
   ctx.renderRecentSongs = renderRecentSongs;
+  ctx.renderWarmupQueue = renderWarmupQueue;
 
   loadSetup();
+  renderWarmupQueue();
   renderRecentSongs();
   renderStages();
 }

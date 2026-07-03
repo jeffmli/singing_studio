@@ -125,8 +125,25 @@
               <input id="syncedLyricsData" type="hidden" />
             </div>
             <div class="field">
-              <label for="warmupLinks">Warmup videos (one URL per line)</label>
-              <textarea id="warmupLinks" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
+              <label>Warm-up picker</label>
+              <div class="warmup-picker">
+                <div class="warmup-library" id="warmupLibrary" aria-label="Warm-up library"></div>
+                <div class="warmup-queue-wrap">
+                  <div class="warmup-queue-head">
+                    <span>Your warm-up queue</span>
+                    <span class="hint">Plays in this order</span>
+                  </div>
+                  <div class="warmup-queue" id="warmupQueue"></div>
+                  <div class="custom-warmup">
+                    <input id="warmupCustomUrl" placeholder="Paste custom YouTube warm-up URL" />
+                    <button type="button" class="ghost" id="warmupCustomAdd">Add</button>
+                  </div>
+                  <details class="advanced-warmups">
+                    <summary>Advanced URL list</summary>
+                    <textarea id="warmupLinks" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
+                  </details>
+                </div>
+              </div>
             </div>
           </div>
         </div>

@@ -13,6 +13,9 @@ const dom = new JSDOM(`<!doctype html><html><body>
   <section id="stageWarmups"></section>
   <section id="stageSong"></section>
   <input id="songTitle"><textarea id="warmupLinks"></textarea>
+  <div id="warmupLibrary"></div>
+  <div id="warmupQueue"></div>
+  <input id="warmupCustomUrl"><button id="warmupCustomAdd"></button>
   <input id="originalUrl"><input id="instrumentalUrl"><input id="lyricVideoUrl">
   <textarea id="lyricsInput"></textarea><input id="syncedLyricsData" type="hidden">
   <input id="practiceGoal" type="hidden">
@@ -47,7 +50,31 @@ ok("home stage active on load", document.getElementById("stageHome").classList.c
 ok("home step is current", document.getElementById("stepHome").classList.contains("current"));
 ok("loadSetup seeds fallback title", document.getElementById("songTitle").value === "Practice Song");
 ok("loadSetup seeds fallback goal", document.getElementById("practiceGoal").value === "Improve pitch");
+ok("warmup library renders starter items", document.querySelectorAll("#warmupLibrary [data-add-warmup]").length >= 6);
+ok("fallback warmups hydrate queue", document.querySelectorAll("#warmupQueue [data-warmup-url]").length === 2);
 ok("recent songs hidden when library empty", document.getElementById("recentSongs").hidden);
+
+const firstWarmupAdd = [...document.querySelectorAll("#warmupLibrary [data-add-warmup]")].find((button) => !button.disabled);
+firstWarmupAdd?.click();
+const afterFirstAdd = document.getElementById("warmupLinks").value.split(/\n+/).filter(Boolean);
+ok("library add appends warmup url", afterFirstAdd.length === 3);
+firstWarmupAdd?.click();
+const afterDuplicateAdd = document.getElementById("warmupLinks").value.split(/\n+/).filter(Boolean);
+ok("duplicate library add is ignored", afterDuplicateAdd.length === 3);
+
+document.getElementById("warmupCustomUrl").value = "https://www.youtube.com/watch?v=fffffffffff";
+document.getElementById("warmupCustomAdd").click();
+const afterCustomAdd = document.getElementById("warmupLinks").value.split(/\n+/).filter(Boolean);
+ok("custom warmup url appends to queue", afterCustomAdd.includes("https://www.youtube.com/watch?v=fffffffffff"));
+
+const lastQueueItem = document.querySelector('#warmupQueue [data-warmup-url="https://www.youtube.com/watch?v=fffffffffff"]');
+lastQueueItem?.querySelector("[data-move-up]")?.click();
+const afterMove = document.getElementById("warmupLinks").value.split(/\n+/).filter(Boolean);
+ok("queue move up reorders warmups", afterMove[afterMove.length - 2] === "https://www.youtube.com/watch?v=fffffffffff");
+
+document.querySelector('#warmupQueue [data-warmup-url="https://www.youtube.com/watch?v=fffffffffff"]')?.querySelector("[data-remove-warmup]")?.click();
+const afterRemove = document.getElementById("warmupLinks").value.split(/\n+/).filter(Boolean);
+ok("queue remove deletes warmup url", !afterRemove.includes("https://www.youtube.com/watch?v=fffffffffff"));
 
 document.getElementById("songTitle").value = "My Test Song";
 document.getElementById("originalUrl").value = "https://youtu.be/aaaaaaaaaaa";
