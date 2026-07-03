@@ -14,6 +14,15 @@ const { initHome } = await import("../web/js/features/home.js");
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };
+const waitFor = async (fn, timeoutMs = 1000) => {
+  const started = Date.now();
+  while (Date.now() - started < timeoutMs) {
+    const result = fn();
+    if (result) return result;
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+  return fn();
+};
 
 const dom = makeDom();
 globalThis.document = dom.window.document;
@@ -29,6 +38,7 @@ await db.writeSession({
   songTitle: "My Focus Song",
   startedAt: 1000,
   endedAt: 121000,
+  durationMs: 245000,
   rating: 4,
   wins: "steady breath",
   focus: "chorus lift",
@@ -64,6 +74,7 @@ await ctx.renderHome();
 ok("previous session listed", document.querySelectorAll("#homeSessionList .session-card").length === 1);
 ok("previous session shows song title", document.querySelector("#homeSessionList .session-card").textContent.includes("My Focus Song"));
 ok("previous session shows reflection", document.querySelector("#homeSessionList .session-card").textContent.includes("steady breath"));
+ok("previous session shows logged duration", document.querySelector("#homeSessionList .session-card").textContent.includes("4:05"));
 ok("start button always enabled", !document.getElementById("homeStartBottom").disabled);
 
 document.getElementById("homeStartBottom").click();
@@ -74,8 +85,8 @@ ok("start does not reset warmup index yet", store.get().warmupIndex === 2);
 ok("start does not refresh takes yet", renderTakesCalls === 0);
 
 document.querySelector("#homeSessionList .session-card summary").click();
-await new Promise((r) => setTimeout(r, 0));
-ok("expanded session shows take", document.querySelector("#homeSessionList .take").textContent.includes("Old take"));
+const expandedTake = await waitFor(() => document.querySelector("#homeSessionList .take"));
+ok("expanded session shows take", expandedTake?.textContent.includes("Old take"));
 ok("expanding old session keeps active session", store.get().sessionId === "active-session");
 
 const emptyDom = makeDom();

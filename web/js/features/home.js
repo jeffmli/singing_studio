@@ -21,11 +21,22 @@ export function initHome(store, ctx) {
     return out;
   }
 
-  function sessionMeta(session, takes) {
+  function formatDuration(ms) {
+    const totalSeconds = Math.max(0, Math.floor((Number(ms) || 0) / 1000));
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, "0")}`;
+  }
+
+  function sessionDurationMs(session) {
+    if (Number.isFinite(session.durationMs)) return session.durationMs;
     const endedAt = session.endedAt || Date.now();
     const startedAt = session.startedAt || endedAt;
-    const mins = Math.max(1, Math.round((endedAt - startedAt) / 60000));
-    return `${mins} min · ${takes.length} take${takes.length === 1 ? "" : "s"}`;
+    return Math.max(0, endedAt - startedAt);
+  }
+
+  function sessionMeta(session, takes) {
+    return `${formatDuration(sessionDurationMs(session))} · ${takes.length} take${takes.length === 1 ? "" : "s"}`;
   }
 
   async function renderExpandedTakes(card) {

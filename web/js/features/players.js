@@ -1,6 +1,6 @@
 // web/js/features/players.js
 // YouTube iframe players for warmup + song panes, embed-error fallback via
-// /api/alt, source tabs rendering, and the playback-rate control.
+// /api/alt, and source tabs rendering.
 import { byId as $, escapeHtml } from "../core/dom.js";
 import { parseYouTubeId } from "./setup.js";
 
@@ -14,14 +14,6 @@ export function initPlayers(store, ctx) {
   const KIND_FIELD = { original: "originalUrl", instrumental: "instrumentalUrl", lyricVideo: "lyricVideoUrl" };
   const triedVideos = { original: new Set(), instrumental: new Set(), lyricVideo: new Set() };
 
-  function applyPlaybackRate() {
-    const player = players.song;
-    if (!player || typeof player.setPlaybackRate !== "function") return;
-    try {
-      player.setPlaybackRate(store.get().playbackRate);
-    } catch (e) {}
-  }
-
   function makePlayer(which, onError) {
     return new YT.Player(which === "warmup" ? "warmupFrame" : "songFrame", {
       playerVars: { rel: 0, modestbranding: 1, playsinline: 1 },
@@ -29,7 +21,6 @@ export function initPlayers(store, ctx) {
         onReady: () => {
           playerState[which].ready = true;
           if (playerState[which].wantId !== undefined) applyVideo(which, playerState[which].wantId);
-          if (which === "song") applyPlaybackRate();
         },
         onError,
       },
@@ -54,7 +45,6 @@ export function initPlayers(store, ctx) {
     if (ps.currentId === videoId) return;
     ps.currentId = videoId;
     try { player.cueVideoById(videoId); } catch (e) {}
-    if (which === "song") window.setTimeout(applyPlaybackRate, 250);
   }
 
   function showWarmupVideo(url) {
@@ -133,19 +123,7 @@ export function initPlayers(store, ctx) {
     } else {
       applyVideo("song", "");
     }
-    ctx.renderLyricOverlay();
-  }
-
-  for (const button of document.querySelectorAll("[data-rate]")) {
-    button.addEventListener("click", () => {
-      const rate = Number(button.dataset.rate) || 1;
-      store.dispatch({ type: "setPlaybackRate", payload: rate });
-      for (const b of document.querySelectorAll("[data-rate]")) {
-        b.classList.toggle("active", b === button);
-      }
-      applyPlaybackRate();
-      ctx.setGuideStatus(`Playback pace set to ${Math.round(rate * 100)}%.`);
-    });
+    ctx.renderLyricOverlay?.();
   }
 
   window.onYouTubeIframeAPIReady = setupPlayers;

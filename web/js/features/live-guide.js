@@ -1,7 +1,6 @@
 // web/js/features/live-guide.js
 // Live pitch guide: reference melody prep (/api/reference), mic pitch tracking
-// with sharp/flat feedback, the rolling pitch chart, the synced lyric caption,
-// and the full-lyrics overlay toggle.
+// with sharp/flat feedback, the rolling pitch chart, and the synced lyric caption.
 import { byId as $ } from "../core/dom.js";
 import { detectPitchHz, hzToMidi, noteName, medianOf } from "../lib/pitch.js";
 import { parseLrc, lyricLineAt } from "../lib/lyrics.js";
@@ -32,18 +31,21 @@ export function initLiveGuide(store, ctx) {
   function renderLyricOverlay() {
     const overlay = $("lyricOverlay");
     if (!overlay) return;
+    const toggle = $("lyricToggle");
+    const body = $("overlayBody");
+    if (!body) return;
     const lines = lyricLines();
     const hidden = store.get().lyricsHidden;
     const isVideo = store.get().step === "song" && store.get().activeTab !== "lyrics";
     overlay.classList.toggle("off", hidden || !isVideo);
-    $("lyricToggle").textContent = hidden ? "Show lyrics" : "Hide lyrics";
+    if (toggle) toggle.textContent = hidden ? "Show lyrics" : "Hide lyrics";
 
     if (!lines.length) {
-      $("overlayBody").textContent = "Paste lyrics in Setup to follow along.";
+      body.textContent = "Paste lyrics in Setup to follow along.";
       return;
     }
 
-    $("overlayBody").textContent = lines.join("\n");
+    body.textContent = lines.join("\n");
   }
 
   function setGuideStatus(message) {
@@ -319,7 +321,7 @@ export function initLiveGuide(store, ctx) {
   $("refreshGuide").addEventListener("click", refreshLiveGuide);
   $("startGuide").addEventListener("click", startLiveGuide);
   $("stopGuide").addEventListener("click", stopLiveGuide);
-  $("lyricToggle").addEventListener("click", () => {
+  $("lyricToggle")?.addEventListener("click", () => {
     store.dispatch({ type: "setLyricsHidden", payload: !store.get().lyricsHidden });
     renderLyricOverlay();
   });

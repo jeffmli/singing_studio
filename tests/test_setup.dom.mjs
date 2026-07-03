@@ -15,10 +15,9 @@ const dom = new JSDOM(`<!doctype html><html><body>
   <input id="songTitle"><textarea id="warmupLinks"></textarea>
   <input id="originalUrl"><input id="instrumentalUrl"><input id="lyricVideoUrl">
   <textarea id="lyricsInput"></textarea><input id="syncedLyricsData" type="hidden">
-  <input id="phraseFocus">
   <div id="manualSetup"></div><button id="manualToggle"></button>
   <section id="recentSongs" hidden><div id="recentSongList"></div></section>
-  <button id="startSession"></button><button id="editSetup"></button>
+  <button id="homeStartBottom"></button><button id="startSession"></button><button id="editSetup"></button>
 </body></html>`, { url: "http://localhost/" });
 globalThis.document = dom.window.document;
 globalThis.localStorage = dom.window.localStorage;
@@ -54,6 +53,7 @@ ok("start persists setup to localStorage", saved.songTitle === "My Test Song");
 const lib = JSON.parse(localStorage.getItem("singing-song-library-v1") || "[]");
 ok("start upserts song library", lib.length === 1 && lib[0].songTitle === "My Test Song");
 ok("library snapshot excludes phraseFocus", !("phraseFocus" in lib[0]));
+ok("phrase focus field removed from setup", document.getElementById("phraseFocus") === null);
 
 // recent songs render + click-to-fill
 ok("recent songs section visible after start", !document.getElementById("recentSongs").hidden);
@@ -68,6 +68,9 @@ ok("edit setup returns to setup step", store.get().step === "setup");
 
 document.getElementById("stepHome").click();
 ok("home stepper returns home", store.get().step === "home");
+
+document.getElementById("homeStartBottom").click();
+ok("home start button opens setup", store.get().step === "setup");
 
 ok("parseYouTubeId handles watch urls", parseYouTubeId("https://www.youtube.com/watch?v=dQw4w9WgXcQ") === "dQw4w9WgXcQ");
 ok("parseYouTubeId handles youtu.be", parseYouTubeId("https://youtu.be/dQw4w9WgXcQ") === "dQw4w9WgXcQ");

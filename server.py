@@ -142,8 +142,9 @@ class Handler(SimpleHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def log_message(self, *args):
-        pass  # keep the console quiet
+    def log_message(self, fmt, *args):
+        # One line per request so stale-cache/wrong-server issues are diagnosable.
+        print(f"{self.address_string()} {fmt % args}", flush=True)
 
 
 def main():

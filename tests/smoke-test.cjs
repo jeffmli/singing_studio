@@ -123,6 +123,8 @@ async function main() {
   await page.click("#homeStartBottom");
   check("start new session opens setup", await page.isVisible("#stageSetup.active"));
   check("setup page is pick-a-song copy", (await page.textContent("#stageSetup .stage-title")).includes("Pick your song"));
+  check("session timer visible", await page.isVisible("#sessionTimer"));
+  check("session timer starts at zero", (await page.textContent("#sessionTimer")).includes("Session 0:00"));
   check("recent songs hidden when library empty", !(await page.isVisible("#recentSongs")));
   check("search bar present", await page.isVisible("#songSearch"));
   check("manual fields collapsed by default", !(await page.evaluate(() => document.getElementById("manualSetup").classList.contains("open"))));
@@ -151,6 +153,7 @@ async function main() {
   await page.fill("#warmupLinks", "https://www.youtube.com/watch?v=ddddddddddd\nhttps://www.youtube.com/watch?v=eeeeeeeeeee");
   await page.click("#startSession");
   check("warmups stage active after start", await page.isVisible("#stageWarmups.active"));
+  check("session timer remains visible during session", await page.isVisible("#sessionTimer"));
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-setup-v1") || "{}"));
   check("setup persisted on start", Boolean(persisted.songTitle && persisted.songTitle.includes("Test Song")));
   const library = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-song-library-v1") || "[]"));
@@ -166,17 +169,12 @@ async function main() {
   check("sing stage active", await page.isVisible("#stageSong.active"));
   check("transport bar visible on sing", await page.isVisible("#transportBar"));
   check("finish & reflect button visible on sing", await page.isVisible("#endSessionBtn"));
-  check("practice drill controls visible", await page.isVisible("#phraseFocus"));
+  check("phrase focus removed", (await page.locator("#phraseFocus").count()) === 0);
+  check("playback pace controls removed", (await page.locator("#pacePills").count()) === 0);
+  check("take label controls removed", (await page.locator("#tempoPills").count()) === 0);
+  check("lyric overlay removed from video pane", (await page.locator("#lyricOverlay").count()) === 0);
+  check("source tabs remain", (await page.locator('[data-tab="original"], [data-tab="instrumental"], [data-tab="lyricVideo"], [data-tab="lyrics"]').count()) === 4);
   check("live pitch guide is collapsed by default", await page.isVisible(".live-guide summary") && !(await page.isVisible("#prepareGuide")));
-  check("playback pace controls visible", await page.isVisible("#pacePills"));
-  check("lyric overlay visible", await page.isVisible("#lyricOverlay"));
-  check("lyric overlay shows full lyrics", (await page.textContent("#overlayBody")).includes("la la la") && (await page.textContent("#overlayBody")).includes("second line"));
-  await page.click('[data-rate="0.75"]');
-  check("75 percent pace selected", await page.evaluate(() => document.querySelector('[data-rate="0.75"]').classList.contains("active")));
-  await page.click("#lyricToggle");
-  check("lyric overlay collapses", await page.evaluate(() => document.getElementById("lyricOverlay").classList.contains("off")));
-  await page.click("#lyricToggle");
-  check("lyric overlay shows again", await page.isVisible("#lyricOverlay"));
 
   // --- Source tabs ---
   console.log("Source tabs");
@@ -218,8 +216,6 @@ async function main() {
 
   // --- Record / Stop ---
   console.log("Record / Stop (fake mic)");
-  await page.fill("#phraseFocus", "verse 1 line 2");
-  await page.click('[data-tempo="Medium"]');
   await page.click("#recordBtn");
   check("recording state active", await waitTrue(() => document.getElementById("transportBar").classList.contains("recording")));
   await page.waitForTimeout(1200);
@@ -233,7 +229,7 @@ async function main() {
   check("takes drawer opens", await page.evaluate(() => document.body.classList.contains("takes-open")));
   check("recorded take listed in drawer", (await page.locator("#takesList .take").count()) >= 1);
   const takeText = await page.textContent("#takesList .take");
-  check("take shows phrase and tempo", takeText.includes("verse 1 line 2") && takeText.includes("Medium"));
+  check("new take omits removed metadata", !takeText.includes("verse 1 line 2") && !takeText.includes("Medium"));
   await page.click("#takesList .analyze-btn");
   check("pitch analysis modal opens", await waitTrue(() => document.body.classList.contains("analyze-open")));
   check("pitch analysis score renders", await waitTrue(() => document.querySelector("#analyzeBody").textContent.includes("82")));
@@ -261,6 +257,7 @@ async function main() {
   check("saved session appears on home", (await page.locator("#homeSessionList .session-card").count()) >= 1);
   const homeCardText = await page.textContent("#homeSessionList .session-card");
   check("home session shows reflection note", homeCardText.includes("breath control felt steady"));
+  check("home session shows logged duration", /\d+:\d{2}/.test(homeCardText));
   await page.click("#homeSessionList .session-card summary");
   check("home expanded session shows recording", await waitTrue(() => document.querySelectorAll("#homeSessionList .take").length >= 1));
   check("bottom start is available", await page.isVisible("#homeStartBottom"));

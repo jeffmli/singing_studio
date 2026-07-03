@@ -7,7 +7,11 @@ import { upsertSong } from "../lib/song-library.js";
 
 const setupKey = "singing-practice-setup-v1";
 const libraryKey = "singing-song-library-v1";
-const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput", "phraseFocus"];
+const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput"];
+
+function valueOf(id) {
+  return $(id)?.value ?? "";
+}
 
 export function parseYouTubeId(value) {
   const raw = String(value || "").trim();
@@ -28,14 +32,13 @@ export function parseYouTubeId(value) {
 export function initSetup(store, ctx) {
   function getSetup() {
     return {
-      songTitle: $("songTitle").value.trim(),
-      warmups: $("warmupLinks").value.split(/\n+/).map((line) => line.trim()).filter(Boolean),
-      originalUrl: $("originalUrl").value.trim(),
-      instrumentalUrl: $("instrumentalUrl").value.trim(),
-      lyricVideoUrl: $("lyricVideoUrl").value.trim(),
-      lyrics: $("lyricsInput").value.trim(),
-      syncedLyrics: $("syncedLyricsData").value || "",
-      phraseFocus: $("phraseFocus").value.trim(),
+      songTitle: valueOf("songTitle").trim(),
+      warmups: valueOf("warmupLinks").split(/\n+/).map((line) => line.trim()).filter(Boolean),
+      originalUrl: valueOf("originalUrl").trim(),
+      instrumentalUrl: valueOf("instrumentalUrl").trim(),
+      lyricVideoUrl: valueOf("lyricVideoUrl").trim(),
+      lyrics: valueOf("lyricsInput").trim(),
+      syncedLyrics: valueOf("syncedLyricsData"),
     };
   }
 
@@ -67,7 +70,6 @@ export function initSetup(store, ctx) {
     $("lyricVideoUrl").value = saved.lyricVideoUrl || "";
     $("lyricsInput").value = saved.lyrics || "";
     $("syncedLyricsData").value = saved.syncedLyrics || "";
-    $("phraseFocus").value = saved.phraseFocus || "";
   }
 
   function readLibrary() {
@@ -160,6 +162,7 @@ export function initSetup(store, ctx) {
     if (song) applySong(song);
   });
   $("editSetup").addEventListener("click", () => setStep("setup"));
+  $("homeStartBottom")?.addEventListener("click", () => setStep("setup"));
   for (const btn of document.querySelectorAll(".step[data-step]")) {
     btn.addEventListener("click", () => setStep(btn.dataset.step));
   }
@@ -167,7 +170,7 @@ export function initSetup(store, ctx) {
     setManualOpen(!$("manualSetup").classList.contains("open"));
   });
   for (const id of fields) {
-    $(id).addEventListener("input", () => saveSetup({ silent: true }));
+    $(id)?.addEventListener("input", () => saveSetup({ silent: true }));
   }
   for (const button of document.querySelectorAll("[data-tab]")) {
     button.addEventListener("click", () => store.dispatch({ type: "setActiveTab", payload: button.dataset.tab }));

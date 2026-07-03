@@ -2,7 +2,7 @@
 // the one-time initial paint.
 import { createStore } from "./core/store.js";
 import { initialState, reducers } from "./core/actions.js";
-import { initSetup } from "./features/setup.js";
+import { initSetup } from "./features/setup.js?v=20260703-singing-cleanup";
 import { initWarmups } from "./features/warmups.js";
 import { initTakes } from "./features/takes.js";
 import { initPlayers } from "./features/players.js";

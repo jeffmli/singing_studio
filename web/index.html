@@ -16,11 +16,28 @@
 <link rel="stylesheet" href="styles/modals.css" />
 </head>
 <body class="on-setup">
+  <script>
+    // Startup crash guard: if any script fails to initialize, surface it
+    // instead of leaving silently dead buttons.
+    window.__BUILD__ = "v2026.07.02-7";
+    window.addEventListener("error", (e) => {
+      let bar = document.getElementById("bootErrorBar");
+      if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "bootErrorBar";
+        bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:#b91c1c;color:#fff;font:13px/1.4 monospace;padding:8px 14px;white-space:pre-wrap";
+        document.body.appendChild(bar);
+      }
+      bar.textContent = "App error (" + window.__BUILD__ + "): " + (e.message || e.error) +
+        (e.filename ? "\n" + e.filename.replace(location.origin, "") + ":" + e.lineno : "");
+    });
+  </script>
   <header class="topbar">
     <div class="brand">
       <span class="dot"></span>
       <b>Singing Studio</b>
-      <span class="tag">self-guided practice</span>
+      <span class="tag">self-guided practice · <span id="buildTag">v7</span></span>
+      <span class="tag session-timer" id="sessionTimer">Session 0:00</span>
     </div>
     <nav class="stepper" aria-label="Practice progress">
       <button class="step current" id="stepHome" data-step="home"><span class="num">0</span>Home</button>
@@ -162,43 +179,10 @@
             <button data-tab="lyrics">Lyrics</button>
           </div>
         </div>
-        <div class="practice-plan" aria-label="Practice controls">
-          <div class="plan-fields">
-            <div class="field phrase-field">
-              <label for="phraseFocus">Phrase focus</label>
-              <input id="phraseFocus" placeholder="Verse 1, chorus high note, line 2..." />
-            </div>
-            <div class="field">
-              <label>Playback pace</label>
-              <div class="pace-pills" id="pacePills">
-                <button type="button" data-rate="0.5">50%</button>
-                <button type="button" data-rate="0.75">75%</button>
-                <button type="button" class="active" data-rate="1">100%</button>
-                <button type="button" data-rate="1.25">125%</button>
-              </div>
-            </div>
-            <div class="field">
-              <label>Take label</label>
-              <div class="tempo-pills" id="tempoPills">
-                <button type="button" class="active" data-tempo="Slow">Slow</button>
-                <button type="button" data-tempo="Medium">Medium</button>
-                <button type="button" data-tempo="Normal">Normal</button>
-              </div>
-            </div>
-          </div>
-        </div>
         <div class="player-shell">
           <div id="videoPane" class="player-frame">
             <div id="songFrame"></div>
             <div id="songPlaceholder" class="placeholder"><div><div class="pi">&#9836;</div>Add a YouTube link for this source in Setup.</div></div>
-            <div id="lyricOverlay" class="lyric-overlay">
-              <div class="line">Lyrics</div>
-              <div id="overlayBody" class="lyrics-body">Paste lyrics in Setup to follow along.</div>
-              <div class="lyric-actions">
-                <span class="label">Full lyrics only</span>
-                <button type="button" id="lyricToggle">Hide lyrics</button>
-              </div>
-            </div>
           </div>
           <div id="lyricsPane" class="lyrics-view hidden"></div>
         </div>
@@ -319,6 +303,6 @@
   <div class="toast" id="toast"></div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script type="module" src="js/main.js"></script>
+<script type="module" src="js/main.js?v=20260703-singing-cleanup"></script>
 </body>
 </html>
