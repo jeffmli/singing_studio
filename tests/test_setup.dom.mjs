@@ -15,6 +15,12 @@ const dom = new JSDOM(`<!doctype html><html><body>
   <input id="songTitle"><textarea id="warmupLinks"></textarea>
   <input id="originalUrl"><input id="instrumentalUrl"><input id="lyricVideoUrl">
   <textarea id="lyricsInput"></textarea><input id="syncedLyricsData" type="hidden">
+  <input id="practiceGoal" type="hidden">
+  <div id="practiceGoals">
+    <button type="button" data-practice-goal="Learn melody"></button>
+    <button type="button" data-practice-goal="Improve pitch"></button>
+    <button type="button" data-practice-goal="Memorize lyrics"></button>
+  </div>
   <div id="manualSetup"></div><button id="manualToggle"></button>
   <section id="recentSongs" hidden><div id="recentSongList"></div></section>
   <button id="homeStartBottom"></button><button id="startSession"></button><button id="editSetup"></button>
@@ -40,18 +46,23 @@ initSetup(store, ctx);
 ok("home stage active on load", document.getElementById("stageHome").classList.contains("active"));
 ok("home step is current", document.getElementById("stepHome").classList.contains("current"));
 ok("loadSetup seeds fallback title", document.getElementById("songTitle").value === "Practice Song");
+ok("loadSetup seeds fallback goal", document.getElementById("practiceGoal").value === "Improve pitch");
 ok("recent songs hidden when library empty", document.getElementById("recentSongs").hidden);
 
 document.getElementById("songTitle").value = "My Test Song";
 document.getElementById("originalUrl").value = "https://youtu.be/aaaaaaaaaaa";
+document.querySelector('[data-practice-goal="Memorize lyrics"]').click();
+ok("goal button updates hidden value", document.getElementById("practiceGoal").value === "Memorize lyrics");
 document.getElementById("startSession").click();
 ok("start session dispatches step=warmups", store.get().step === "warmups");
 ok("start session starts a new session", newSessionCalls === 1);
 ok("stage class follows step", document.getElementById("stageWarmups").classList.contains("active"));
 const saved = JSON.parse(localStorage.getItem("singing-practice-setup-v1"));
 ok("start persists setup to localStorage", saved.songTitle === "My Test Song");
+ok("start persists practice goal", saved.practiceGoal === "Memorize lyrics");
 const lib = JSON.parse(localStorage.getItem("singing-song-library-v1") || "[]");
 ok("start upserts song library", lib.length === 1 && lib[0].songTitle === "My Test Song");
+ok("song library snapshot keeps practice goal", lib[0].practiceGoal === "Memorize lyrics");
 ok("library snapshot excludes phraseFocus", !("phraseFocus" in lib[0]));
 ok("phrase focus field removed from setup", document.getElementById("phraseFocus") === null);
 
@@ -59,9 +70,11 @@ ok("phrase focus field removed from setup", document.getElementById("phraseFocus
 ok("recent songs section visible after start", !document.getElementById("recentSongs").hidden);
 document.getElementById("songTitle").value = "";
 document.getElementById("originalUrl").value = "";
+document.getElementById("practiceGoal").value = "";
 document.querySelector("#recentSongList .recent-song").click();
 ok("clicking recent song fills title", document.getElementById("songTitle").value === "My Test Song");
 ok("clicking recent song fills original url", document.getElementById("originalUrl").value === "https://youtu.be/aaaaaaaaaaa");
+ok("clicking recent song fills practice goal", document.getElementById("practiceGoal").value === "Memorize lyrics");
 
 document.getElementById("editSetup").click();
 ok("edit setup returns to setup step", store.get().step === "setup");

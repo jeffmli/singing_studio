@@ -29,7 +29,7 @@ const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : 
 const store = createStore(initialState, reducers);
 let renderTakesCalls = 0;
 const ctx = {
-  getSetup: () => ({ songTitle: "My Song" }),
+  getSetup: () => ({ songTitle: "My Song", practiceGoal: "Improve pitch" }),
   closePanels: () => document.body.classList.remove("takes-open", "history-open", "reflect-open", "analyze-open"),
   renderTakes: async () => { renderTakesCalls++; },
   buildTakeEl: () => document.createElement("article"),
@@ -50,6 +50,7 @@ document.getElementById("endSessionBtn").click();
 await new Promise((r) => setTimeout(r, 50));
 ok("reflect modal opens", document.body.classList.contains("reflect-open"));
 ok("summary mentions song", document.getElementById("reflectSummary").textContent.includes("My Song"));
+ok("summary mentions practice goal", document.getElementById("reflectSummary").textContent.includes("Improve pitch"));
 ok("summary includes elapsed duration", document.getElementById("reflectSummary").textContent.includes("3:00"));
 
 document.querySelector('#reflectStars .star[data-rating="4"]').click();
@@ -67,6 +68,7 @@ ok("toast shown", document.getElementById("toast").classList.contains("show"));
 
 const sessions = await db.readSessions();
 ok("session saved with rating + wins", sessions.length === 1 && sessions[0].rating === 4 && sessions[0].wins === "breath steady");
+ok("session saved with practice goal", sessions[0].practiceGoal === "Improve pitch");
 ok("saved session logs durationMs", sessions[0].durationMs === 180000);
 
 document.getElementById("historyBtn").click();
@@ -75,6 +77,7 @@ ok("history panel opens", document.body.classList.contains("history-open"));
 ok("saved session card listed", document.querySelectorAll("#historyList .session-card").length === 1);
 ok("card shows reflection", document.querySelector("#historyList .session-card").textContent.includes("breath steady"));
 ok("card shows logged duration", document.querySelector("#historyList .session-card").textContent.includes("3:00"));
+ok("card shows practice goal", document.querySelector("#historyList .session-card").textContent.includes("Improve pitch"));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAIL"}: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);

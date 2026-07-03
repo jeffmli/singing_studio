@@ -85,12 +85,14 @@ export function initHome(store, ctx) {
       const reflectBits = [];
       if (session.wins) reflectBits.push(`<p class="r"><b>Went well:</b> ${escapeHtml(session.wins)}</p>`);
       if (session.focus) reflectBits.push(`<p class="r"><b>Next time:</b> ${escapeHtml(session.focus)}</p>`);
+      const goal = session.practiceGoal ? `<div class="goal-chip">${escapeHtml(session.practiceGoal)}</div>` : "";
       card.innerHTML = `
         <summary>
           <div class="sc-top">
             <span class="sc-song">${escapeHtml(session.songTitle || "Practice session")}</span>
             <span class="sc-date">${escapeHtml(new Date(session.endedAt || Date.now()).toLocaleDateString([], { dateStyle: "medium" }))}</span>
           </div>
+          ${goal}
           <div class="sc-stars">${starsMarkup(session.rating || 0)}</div>
           <div class="sc-meta">${escapeHtml(sessionMeta(session, takes))}</div>
         </summary>

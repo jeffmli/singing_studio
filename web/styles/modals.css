@@ -56,6 +56,16 @@ body.history-open #historyDrawer { transform: translateX(0); }
 .session-card .sc-stars { color: var(--amber); letter-spacing: 2px; font-size: 14px; }
 .session-card .sc-stars .off { color: rgba(255,255,255,0.16); }
 .session-card .sc-meta { color: #8a7e6d; font-size: 12.5px; }
+.session-card .goal-chip {
+  justify-self: start;
+  padding: 3px 8px;
+  border: 1px solid rgba(245,165,36,0.25);
+  border-radius: 999px;
+  color: var(--amber-bright);
+  background: rgba(245,165,36,0.08);
+  font-size: 12px;
+  font-weight: 600;
+}
 .session-card .sc-reflect { display: grid; gap: 7px; padding: 0 16px 14px; }
 .session-card .sc-reflect .r { font-size: 13.5px; }
 .session-card .sc-reflect .r b { color: var(--amber-bright); font-weight: 600; }

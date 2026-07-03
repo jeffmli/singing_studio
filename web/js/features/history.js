@@ -105,12 +105,14 @@ export function initHistory(store, ctx) {
       const reflectBits = [];
       if (session.wins) reflectBits.push(`<p class="r"><b>Went well:</b> ${escapeHtml(session.wins)}</p>`);
       if (session.focus) reflectBits.push(`<p class="r"><b>Next time:</b> ${escapeHtml(session.focus)}</p>`);
+      const goal = session.practiceGoal ? `<div class="goal-chip">${escapeHtml(session.practiceGoal)}</div>` : "";
       card.innerHTML = `
         <summary>
           <div class="sc-top">
             <span class="sc-song">${escapeHtml(session.songTitle || "Practice session")}</span>
             <span class="sc-date">${date}</span>
           </div>
+          ${goal}
           <div class="sc-stars">${starsMarkup(session.rating || 0)}</div>
           <div class="sc-meta">${formatSessionDuration(durationMs)} · ${takes.length} take${takes.length === 1 ? "" : "s"}</div>
         </summary>
@@ -137,9 +139,11 @@ export function initHistory(store, ctx) {
   async function openReflect() {
     const takes = (await readTakes()).filter((t) => t.sessionId === store.get().sessionId);
     const duration = formatSessionDuration(getSessionElapsedMs());
-    const song = ctx.getSetup().songTitle || "this song";
+    const setup = ctx.getSetup();
+    const song = setup.songTitle || "this song";
+    const goal = setup.practiceGoal ? ` · ${setup.practiceGoal}` : "";
     $("reflectSummary").textContent =
-      `${song} · ${duration} · ${takes.length} take${takes.length === 1 ? "" : "s"} recorded.`;
+      `${song}${goal} · ${duration} · ${takes.length} take${takes.length === 1 ? "" : "s"} recorded.`;
     setStars(0);
     $("reflectWins").value = "";
     $("reflectFocus").value = "";
@@ -163,6 +167,7 @@ export function initHistory(store, ctx) {
     const session = {
       id: store.get().sessionId,
       songTitle: ctx.getSetup().songTitle || "Practice session",
+      practiceGoal: ctx.getSetup().practiceGoal || "",
       startedAt: store.get().sessionStartedAt,
       endedAt,
       durationMs,

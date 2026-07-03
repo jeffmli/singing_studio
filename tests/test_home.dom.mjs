@@ -39,6 +39,7 @@ await db.writeSession({
   startedAt: 1000,
   endedAt: 121000,
   durationMs: 245000,
+  practiceGoal: "Record clean take",
   rating: 4,
   wins: "steady breath",
   focus: "chorus lift",
@@ -75,6 +76,7 @@ ok("previous session listed", document.querySelectorAll("#homeSessionList .sessi
 ok("previous session shows song title", document.querySelector("#homeSessionList .session-card").textContent.includes("My Focus Song"));
 ok("previous session shows reflection", document.querySelector("#homeSessionList .session-card").textContent.includes("steady breath"));
 ok("previous session shows logged duration", document.querySelector("#homeSessionList .session-card").textContent.includes("4:05"));
+ok("previous session shows practice goal", document.querySelector("#homeSessionList .session-card").textContent.includes("Record clean take"));
 ok("start button always enabled", !document.getElementById("homeStartBottom").disabled);
 
 document.getElementById("homeStartBottom").click();

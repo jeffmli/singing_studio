@@ -8,6 +8,7 @@ import { upsertSong } from "../lib/song-library.js";
 const setupKey = "singing-practice-setup-v1";
 const libraryKey = "singing-song-library-v1";
 const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput"];
+const defaultPracticeGoal = "Improve pitch";
 
 function valueOf(id) {
   return $(id)?.value ?? "";
@@ -39,6 +40,7 @@ export function initSetup(store, ctx) {
       lyricVideoUrl: valueOf("lyricVideoUrl").trim(),
       lyrics: valueOf("lyricsInput").trim(),
       syncedLyrics: valueOf("syncedLyricsData"),
+      practiceGoal: valueOf("practiceGoal") || defaultPracticeGoal,
     };
   }
 
@@ -60,7 +62,7 @@ export function initSetup(store, ctx) {
       lyricVideoUrl: "",
       lyrics: "",
       syncedLyrics: "",
-      phraseFocus: "",
+      practiceGoal: defaultPracticeGoal,
     };
     const saved = JSON.parse(localStorage.getItem(setupKey) || "null") || fallback;
     $("songTitle").value = saved.songTitle || "";
@@ -70,6 +72,7 @@ export function initSetup(store, ctx) {
     $("lyricVideoUrl").value = saved.lyricVideoUrl || "";
     $("lyricsInput").value = saved.lyrics || "";
     $("syncedLyricsData").value = saved.syncedLyrics || "";
+    setPracticeGoal(saved.practiceGoal || defaultPracticeGoal, { silent: true });
   }
 
   function readLibrary() {
@@ -88,6 +91,7 @@ export function initSetup(store, ctx) {
     $("lyricVideoUrl").value = song.lyricVideoUrl || "";
     $("lyricsInput").value = song.lyrics || "";
     $("syncedLyricsData").value = song.syncedLyrics || "";
+    setPracticeGoal(song.practiceGoal || defaultPracticeGoal, { silent: true });
     if (Array.isArray(song.warmups) && song.warmups.length) {
       $("warmupLinks").value = song.warmups.join("\n");
     }
@@ -144,10 +148,18 @@ export function initSetup(store, ctx) {
     $("manualToggle").setAttribute("aria-expanded", String(open));
   }
 
+  function setPracticeGoal(goal, { silent = false } = {}) {
+    const next = goal || defaultPracticeGoal;
+    if ($("practiceGoal")) $("practiceGoal").value = next;
+    for (const button of document.querySelectorAll("[data-practice-goal]")) {
+      button.classList.toggle("active", button.dataset.practiceGoal === next);
+    }
+    if (!silent) saveSetup({ silent: true });
+  }
+
   $("startSession").addEventListener("click", () => {
     saveSetup({ silent: true });
     const snapshot = getSetup();
-    delete snapshot.phraseFocus; // session-specific, not part of the song
     localStorage.setItem(libraryKey, JSON.stringify(upsertSong(readLibrary(), snapshot)));
     renderRecentSongs();
     ctx.startNewSession?.();
@@ -171,6 +183,9 @@ export function initSetup(store, ctx) {
   });
   for (const id of fields) {
     $(id)?.addEventListener("input", () => saveSetup({ silent: true }));
+  }
+  for (const button of document.querySelectorAll("[data-practice-goal]")) {
+    button.addEventListener("click", () => setPracticeGoal(button.dataset.practiceGoal));
   }
   for (const button of document.querySelectorAll("[data-tab]")) {
     button.addEventListener("click", () => store.dispatch({ type: "setActiveTab", payload: button.dataset.tab }));
