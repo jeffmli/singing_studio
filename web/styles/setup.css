@@ -50,6 +50,7 @@
 @media (max-width: 820px) {
   .setup-grid { grid-template-columns: 1fr; }
   .practice-plan .plan-fields { grid-template-columns: 1fr; }
+  .setup-actions .primary { width: 100%; justify-content: center; }
 }
 
 /* ---------- Recent songs ---------- */

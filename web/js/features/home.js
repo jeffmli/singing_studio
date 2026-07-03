@@ -25,8 +25,7 @@ export function initHome(store, ctx) {
     const endedAt = session.endedAt || Date.now();
     const startedAt = session.startedAt || endedAt;
     const mins = Math.max(1, Math.round((endedAt - startedAt) / 60000));
-    const date = new Date(endedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
-    return `${date} · ${mins} min · ${takes.length} take${takes.length === 1 ? "" : "s"}`;
+    return `${mins} min · ${takes.length} take${takes.length === 1 ? "" : "s"}`;
   }
 
   async function renderExpandedTakes(card) {

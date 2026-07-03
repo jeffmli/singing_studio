@@ -134,6 +134,7 @@ export function initSetup(store, ctx) {
     document.body.classList.toggle("on-setup", step === "setup");
     document.body.classList.toggle("on-warmups", step === "warmups");
     document.body.classList.toggle("on-sing", step === "song");
+    globalThis.scrollTo?.(0, 0); // each stage starts at its title, not mid-page
   }
 
   function setManualOpen(open) {
