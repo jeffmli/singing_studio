@@ -140,6 +140,8 @@ async function main() {
   check("lyric video url filled", (await page.inputValue("#lyricVideoUrl")).includes("ccccccccccc"));
   check("lyrics filled", (await page.inputValue("#lyricsInput")).includes("la la la"));
   check("manual fields auto-expand after search", await page.evaluate(() => document.getElementById("manualSetup").classList.contains("open")));
+  check("warmup picker library visible", (await page.locator("#warmupLibrary [data-add-warmup]").count()) >= 6);
+  check("fallback warmup queue visible", (await page.locator("#warmupQueue [data-warmup-url]").count()) === 2);
 
   // --- Manual section toggle ---
   console.log("Manual section toggle");
@@ -150,15 +152,21 @@ async function main() {
 
   // --- Start session (save + warmups) ---
   console.log("Start session (save + warmups)");
-  await page.fill("#warmupLinks", "https://www.youtube.com/watch?v=ddddddddddd\nhttps://www.youtube.com/watch?v=eeeeeeeeeee");
+  await page.click('[data-practice-goal="Record clean take"]');
+  await page.fill("#warmupCustomUrl", "https://www.youtube.com/watch?v=ddddddddddd");
+  await page.click("#warmupCustomAdd");
+  check("custom warmup appears in queue", (await page.locator('#warmupQueue [data-warmup-url="https://www.youtube.com/watch?v=ddddddddddd"]').count()) === 1);
   await page.click("#startSession");
   check("warmups stage active after start", await page.isVisible("#stageWarmups.active"));
   check("session timer remains visible during session", await page.isVisible("#sessionTimer"));
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-setup-v1") || "{}"));
   check("setup persisted on start", Boolean(persisted.songTitle && persisted.songTitle.includes("Test Song")));
+  check("practice goal persisted on start", persisted.practiceGoal === "Record clean take");
+  check("warmup picker persisted queue", persisted.warmups.length === 3 && persisted.warmups.includes("https://www.youtube.com/watch?v=ddddddddddd"));
   const library = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-song-library-v1") || "[]"));
   check("song saved to library on start", library.length === 1 && library[0].songTitle.includes("Test Song"));
-  check("warmup dots match link count", (await page.locator("#warmupDots .wd").count()) === 2);
+  check("song library saves practice goal", library[0].practiceGoal === "Record clean take");
+  check("warmup dots match link count", (await page.locator("#warmupDots .wd").count()) === 3);
   check("prev disabled at first warmup", await page.isDisabled("#prevWarmup"));
   await page.click("#nextWarmup");
   check("prev enabled after next", !(await page.isDisabled("#prevWarmup")));
@@ -174,6 +182,7 @@ async function main() {
   check("take label controls removed", (await page.locator("#tempoPills").count()) === 0);
   check("lyric overlay removed from video pane", (await page.locator("#lyricOverlay").count()) === 0);
   check("source tabs remain", (await page.locator('[data-tab="original"], [data-tab="instrumental"], [data-tab="lyricVideo"], [data-tab="lyrics"]').count()) === 4);
+  check("piano practice is available", await page.isVisible(".piano-practice summary"));
   check("live pitch guide is collapsed by default", await page.isVisible(".live-guide summary") && !(await page.isVisible("#prepareGuide")));
 
   // --- Source tabs ---
@@ -183,6 +192,17 @@ async function main() {
   check("video pane hidden on Lyrics tab", !(await page.isVisible("#videoPane")));
   await page.click('[data-tab="original"]');
   check("video pane shows on Original tab", await page.isVisible("#videoPane"));
+
+  // --- Piano practice ---
+  console.log("Piano practice");
+  await page.click(".piano-practice summary");
+  check("piano keys render", (await page.locator("#pianoKeys [data-midi]").count()) === 49);
+  await page.click('#pianoKeys [data-midi="60"]');
+  check("piano note click updates active note", (await page.textContent("#pianoActiveNote")) === "C4");
+  await page.click("#pianoStartMatch");
+  check("piano match starts", await waitTrue(() => document.getElementById("pianoStopMatch").disabled === false));
+  await page.click("#pianoStopMatch");
+  check("piano match stops", await waitTrue(() => document.getElementById("pianoStopMatch").disabled === true));
 
   // --- Live pitch guide ---
   console.log("Live pitch guide");
@@ -257,6 +277,7 @@ async function main() {
   check("saved session appears on home", (await page.locator("#homeSessionList .session-card").count()) >= 1);
   const homeCardText = await page.textContent("#homeSessionList .session-card");
   check("home session shows reflection note", homeCardText.includes("breath control felt steady"));
+  check("home session shows practice goal", homeCardText.includes("Record clean take"));
   check("home session shows logged duration", /\d+:\d{2}/.test(homeCardText));
   await page.click("#homeSessionList .session-card summary");
   check("home expanded session shows recording", await waitTrue(() => document.querySelectorAll("#homeSessionList .take").length >= 1));
@@ -279,6 +300,7 @@ async function main() {
   check("saved session appears in history", (await page.locator("#historyList .session-card").count()) >= 1);
   const cardText = await page.textContent("#historyList .session-card");
   check("session shows reflection note", cardText.includes("breath control felt steady"));
+  check("session shows practice goal", cardText.includes("Record clean take"));
   await page.click("#closeHistory");
   check("history panel closes", await page.evaluate(() => !document.body.classList.contains("history-open")));
 
