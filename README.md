@@ -13,15 +13,20 @@ It runs entirely on your own machine. No accounts, no cloud, no API keys.
 - **Search a song by name** — auto-finds the original, instrumental/karaoke, and
   lyric videos on YouTube (via `yt-dlp`, no API key) plus the lyrics, and
   auto-fills your session. Manual fields stay tucked away until you need them.
+- **Recent songs** — every song you practice is saved locally; one click on the
+  setup page reloads everything (videos, lyrics, warmups). No re-search.
 - **Self-healing videos** — if a video refuses to embed ("Video unavailable"),
   the app automatically finds and swaps in another that plays.
-- **Three-stage flow** — one focused screen at a time: Setup → Warmups → Sing.
-- **Step through warmups** with embedded YouTube exercises.
+- **Home → Pick your song → Warmups → Sing** — the homepage lists every saved
+  session (open one to hear its recordings); starting a new session walks you
+  through one focused screen at a time.
+- **Build a warm-up queue** from a curated picker or custom YouTube URLs, then
+  step through the selected exercises.
 - **Sing** with the original, instrumental, lyric video, or on-screen lyrics.
-- **Phrase + tempo drill tracking** — label takes as Slow / Medium / Normal and
-  keep the exact phrase focus attached to each recording.
-- **Playback pace + lyric overlay** — slow the YouTube player down for phrase
-  practice and follow lyrics directly over the video, with manual line nudges.
+- **Practice goals** — tag each session as melody, pitch, lyrics, clean take, or
+  warmup-only, then see that goal in your history.
+- **In-app piano / note practice** — play local reference tones and match them
+  with microphone pitch feedback.
 - **Record your takes** straight from the browser mic, with a live input meter.
 - **Analyze pitch** — optional local pitch scoring compares a take to the
   original melody and shows a green/red intonation graph when the analysis
@@ -74,9 +79,10 @@ it manually if it picks the wrong track.
 ## Tests
 
 A Playwright smoke test drives the real app and checks every button — search
-auto-fill, save setup, start session, warmup nav, stepper, source tabs,
-record/stop (with a fake mic), phrase/tempo take labels, playback pace, lyric overlay, live pitch guide,
-mocked pitch analysis, takes drawer, finish & reflect, and history.
+auto-fill, save-on-start, recent songs, warm-up picker, practice goals, warmup
+nav, stepper, source tabs, piano note practice, record/stop (with a fake mic),
+live pitch guide, mocked pitch analysis, takes drawer, finish & reflect, and
+history.
 
 ```bash
 npm install      # first time

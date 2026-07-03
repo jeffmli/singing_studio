@@ -1,6 +1,6 @@
 // web/js/features/recording.js
 // Mic capture + take recording: device picker, MediaRecorder, level meter,
-// timer, tempo pills, and saving takes. Owns "singing-practice-mic-v1".
+// timer, and saving takes. Owns "singing-practice-mic-v1".
 import { byId as $ } from "../core/dom.js";
 import { micAudioConstraints, micOptions } from "../lib/mic.js";
 import { writeTake } from "../core/db.js";
@@ -172,8 +172,6 @@ export function initRecording(store, ctx) {
       id: crypto.randomUUID(),
       title: setup.songTitle || "Singing Take",
       note: $("takeNote").value.trim(),
-      phraseFocus: setup.phraseFocus || "",
-      takeTempo: store.get().takeTempo,
       blob,
       createdAt: Date.now(),
       sessionId: store.get().sessionId,
@@ -190,15 +188,6 @@ export function initRecording(store, ctx) {
   $("micSelect").addEventListener("change", onMicChange);
   if (navigator.mediaDevices && "ondevicechange" in navigator.mediaDevices) {
     navigator.mediaDevices.addEventListener("devicechange", () => { refreshMicList(); });
-  }
-  for (const button of document.querySelectorAll("[data-tempo]")) {
-    button.addEventListener("click", () => {
-      store.dispatch({ type: "setTakeTempo", payload: button.dataset.tempo });
-      for (const b of document.querySelectorAll("[data-tempo]")) {
-        b.classList.toggle("active", b === button);
-      }
-      $("takeNote").placeholder = `Note for ${store.get().takeTempo.toLowerCase()} take: what to improve next time?`;
-    });
   }
 
   // Seed the store with the saved mic choice.

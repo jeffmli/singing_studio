@@ -42,26 +42,6 @@
   gap: 16px; margin-bottom: 12px; flex-wrap: wrap;
 }
 .song-name { font-family: var(--display); font-weight: 500; font-size: clamp(22px, 3vw, 32px); }
-.practice-plan {
-  display: grid; gap: 12px; margin-bottom: 14px; padding: 12px;
-  border: 1px solid var(--line); border-radius: var(--radius-sm);
-  background: rgba(0,0,0,0.16);
-}
-.practice-plan .plan-fields {
-  display: grid; grid-template-columns: minmax(220px, 1fr) auto auto; gap: 10px;
-  align-items: end; margin: 0;
-}
-.practice-plan .field { margin: 0; gap: 6px; }
-.practice-plan input { min-height: 38px; padding: 8px 11px; }
-.phrase-field { min-width: 260px; }
-.tempo-pills, .pace-pills { display: flex; gap: 6px; flex-wrap: wrap; }
-.tempo-pills button, .pace-pills button {
-  min-height: 34px; padding: 6px 10px; border-radius: 999px;
-  color: #9b8e7c; background: rgba(255,255,255,0.03); font-size: 13px;
-}
-.tempo-pills button.active, .pace-pills button.active {
-  color: #2a1903; background: var(--amber); border-color: var(--amber);
-}
 
 .segmented {
   display: inline-flex; padding: 4px; gap: 2px;

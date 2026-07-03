@@ -69,6 +69,9 @@ export function noteName(m) {
 export function hzToMidi(hz) {
   return 69 + 12 * Math.log2(hz / 440);
 }
+export function midiToHz(midi) {
+  return 440 * Math.pow(2, (midi - 69) / 12);
+}
 export function medianOf(arr) {
   const s = [...arr].sort((a, b) => a - b);
   const mid = s.length >> 1;

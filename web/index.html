@@ -16,14 +16,33 @@
 <link rel="stylesheet" href="styles/modals.css" />
 </head>
 <body class="on-setup">
+  <script>
+    // Startup crash guard: if any script fails to initialize, surface it
+    // instead of leaving silently dead buttons.
+    window.__BUILD__ = "v2026.07.02-7";
+    window.addEventListener("error", (e) => {
+      let bar = document.getElementById("bootErrorBar");
+      if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "bootErrorBar";
+        bar.style.cssText = "position:fixed;top:0;left:0;right:0;z-index:9999;background:#b91c1c;color:#fff;font:13px/1.4 monospace;padding:8px 14px;white-space:pre-wrap";
+        document.body.appendChild(bar);
+      }
+      bar.textContent = "App error (" + window.__BUILD__ + "): " + (e.message || e.error) +
+        (e.filename ? "\n" + e.filename.replace(location.origin, "") + ":" + e.lineno : "");
+    });
+  </script>
   <header class="topbar">
     <div class="brand">
       <span class="dot"></span>
       <b>Singing Studio</b>
-      <span class="tag">self-guided practice</span>
+      <span class="tag">self-guided practice · <span id="buildTag">v7</span></span>
+      <span class="tag session-timer" id="sessionTimer">Session 0:00</span>
     </div>
     <nav class="stepper" aria-label="Practice progress">
-      <button class="step current" id="stepSetup" data-step="setup"><span class="num">1</span>Setup</button>
+      <button class="step current" id="stepHome" data-step="home"><span class="num">0</span>Home</button>
+      <span class="step-divider"></span>
+      <button class="step" id="stepSetup" data-step="setup"><span class="num">1</span>Song</button>
       <span class="step-divider"></span>
       <button class="step" id="stepWarmups" data-step="warmups"><span class="num">2</span>Warmups</button>
       <span class="step-divider"></span>
@@ -32,26 +51,43 @@
     <div class="end">
       <button class="primary on-sing-only" id="endSessionBtn">Finish &amp; reflect</button>
       <button class="ghost" id="historyBtn">&#9719; History</button>
-      <button class="ghost" id="editSetup">&#9881; Setup</button>
+      <button class="ghost" id="editSetup">&#9881; Song</button>
     </div>
   </header>
 
   <main>
+    <!-- HOME -->
+    <section id="stageHome" class="stage active">
+      <div class="stage-head">
+        <div class="stage-eyebrow">Home</div>
+        <h1 class="stage-title">Your practice sessions</h1>
+        <p class="stage-sub">Every session you've saved — open one to hear its recordings.</p>
+      </div>
+      <div class="home-wrap">
+        <section class="home-history">
+          <div id="homeSessionList"></div>
+          <div class="home-bottom-action">
+            <button id="homeStartBottom" class="primary">Start new session</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
     <!-- STAGE 1: SETUP -->
-    <section id="stageSetup" class="stage active">
+    <section id="stageSetup" class="stage">
       <div class="stage-head">
         <div class="stage-eyebrow">Step One</div>
-        <h1 class="stage-title">Set up your session</h1>
-        <p class="stage-sub">Paste your links and lyrics once. Everything is saved in this browser.</p>
+        <h1 class="stage-title">Pick your song</h1>
+        <p class="stage-sub">Search once — videos and lyrics fill in automatically.</p>
       </div>
       <div class="card setup-card">
         <div class="song-search">
-          <label for="songSearch">&#9889; Quick start &mdash; search a song</label>
+          <label for="songSearch">&#9889; What are you singing today?</label>
           <div class="search-row">
             <input id="songSearch" placeholder="e.g. Adele - Hello" autocomplete="off" />
             <button id="searchBtn" class="primary">Search</button>
           </div>
-          <p id="searchStatus" class="search-status muted">Type a song and we'll find the videos and lyrics for you.</p>
+          <p id="searchStatus" class="search-status muted">Type a song name and hit Search.</p>
         </div>
         <div class="manual-setup" id="manualSetup">
         <button type="button" class="manual-toggle" id="manualToggle" aria-expanded="false">
@@ -89,16 +125,48 @@
               <input id="syncedLyricsData" type="hidden" />
             </div>
             <div class="field">
-              <label for="warmupLinks">Warmup videos (one URL per line)</label>
-              <textarea id="warmupLinks" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
+              <label>Warm-up picker</label>
+              <div class="warmup-picker">
+                <div class="warmup-library" id="warmupLibrary" aria-label="Warm-up library"></div>
+                <div class="warmup-queue-wrap">
+                  <div class="warmup-queue-head">
+                    <span>Your warm-up queue</span>
+                    <span class="hint">Plays in this order</span>
+                  </div>
+                  <div class="warmup-queue" id="warmupQueue"></div>
+                  <div class="custom-warmup">
+                    <input id="warmupCustomUrl" placeholder="Paste custom YouTube warm-up URL" />
+                    <button type="button" class="ghost" id="warmupCustomAdd">Add</button>
+                  </div>
+                  <details class="advanced-warmups">
+                    <summary>Advanced URL list</summary>
+                    <textarea id="warmupLinks" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
+                  </details>
+                </div>
+              </div>
             </div>
           </div>
         </div>
         </div></div>
         </div>
+        <section class="recent-songs" id="recentSongs" hidden>
+          <h3>Recent songs</h3>
+          <p class="hint">One click loads everything — videos, lyrics, warmups.</p>
+          <div id="recentSongList"></div>
+        </section>
+        <section class="practice-goals" aria-label="Practice goal">
+          <h3>Practice goal</h3>
+          <input id="practiceGoal" type="hidden" />
+          <div id="practiceGoals" class="goal-options">
+            <button type="button" data-practice-goal="Learn melody">Learn melody</button>
+            <button type="button" data-practice-goal="Improve pitch">Improve pitch</button>
+            <button type="button" data-practice-goal="Memorize lyrics">Memorize lyrics</button>
+            <button type="button" data-practice-goal="Record clean take">Record clean take</button>
+            <button type="button" data-practice-goal="Warmup only">Warmup only</button>
+          </div>
+        </section>
         <div class="setup-actions">
-          <button id="saveSetup" class="ghost">Save</button>
-          <button id="startSession" class="primary">Start Session &rarr;</button>
+          <button id="startSession" class="primary">Save &amp; start warmups &rarr;</button>
         </div>
       </div>
     </section>
@@ -139,46 +207,39 @@
             <button data-tab="lyrics">Lyrics</button>
           </div>
         </div>
-        <div class="practice-plan" aria-label="Practice controls">
-          <div class="plan-fields">
-            <div class="field phrase-field">
-              <label for="phraseFocus">Phrase focus</label>
-              <input id="phraseFocus" placeholder="Verse 1, chorus high note, line 2..." />
-            </div>
-            <div class="field">
-              <label>Playback pace</label>
-              <div class="pace-pills" id="pacePills">
-                <button type="button" data-rate="0.5">50%</button>
-                <button type="button" data-rate="0.75">75%</button>
-                <button type="button" class="active" data-rate="1">100%</button>
-                <button type="button" data-rate="1.25">125%</button>
-              </div>
-            </div>
-            <div class="field">
-              <label>Take label</label>
-              <div class="tempo-pills" id="tempoPills">
-                <button type="button" class="active" data-tempo="Slow">Slow</button>
-                <button type="button" data-tempo="Medium">Medium</button>
-                <button type="button" data-tempo="Normal">Normal</button>
-              </div>
-            </div>
-          </div>
-        </div>
         <div class="player-shell">
           <div id="videoPane" class="player-frame">
             <div id="songFrame"></div>
             <div id="songPlaceholder" class="placeholder"><div><div class="pi">&#9836;</div>Add a YouTube link for this source in Setup.</div></div>
-            <div id="lyricOverlay" class="lyric-overlay">
-              <div class="line">Lyrics</div>
-              <div id="overlayBody" class="lyrics-body">Paste lyrics in Setup to follow along.</div>
-              <div class="lyric-actions">
-                <span class="label">Full lyrics only</span>
-                <button type="button" id="lyricToggle">Hide lyrics</button>
-              </div>
-            </div>
           </div>
           <div id="lyricsPane" class="lyrics-view hidden"></div>
         </div>
+        <details class="piano-practice" aria-label="Piano note practice">
+          <summary>
+            <span>
+              <b>Piano / note practice</b>
+              <small>Play a note, then match it with your voice</small>
+            </span>
+            <span class="summary-action">Open</span>
+          </summary>
+          <div class="piano-panel">
+            <div class="piano-topline">
+              <div class="readout"><span>Active note</span><b id="pianoActiveNote">--</b></div>
+              <p id="pianoStatus" class="guide-status">Pick a note to hear a reference tone.</p>
+            </div>
+            <div id="pianoKeys" class="piano-keys" aria-label="Piano keyboard"></div>
+            <div class="guide-actions">
+              <button id="pianoStartMatch" class="primary">Start match</button>
+              <button id="pianoStopMatch" class="ghost" disabled>Stop match</button>
+            </div>
+            <div class="guide-readouts">
+              <div class="readout"><span>Target</span><b id="pianoTargetNote">C4</b></div>
+              <div class="readout"><span>You</span><b id="pianoUserNote">--</b></div>
+              <div class="readout"><span>Difference</span><b id="pianoPitchDelta">--</b></div>
+              <div class="readout feedback"><span>Feedback</span><b id="pianoFeedback">Pick note</b></div>
+            </div>
+          </div>
+        </details>
         <details class="live-guide" aria-label="Live pitch guide">
           <summary>
             <span>
@@ -296,6 +357,6 @@
   <div class="toast" id="toast"></div>
 
 <script src="https://www.youtube.com/iframe_api"></script>
-<script type="module" src="js/main.js"></script>
+<script type="module" src="js/main.js?v=20260703-singing-cleanup"></script>
 </body>
 </html>
