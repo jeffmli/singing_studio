@@ -10,6 +10,7 @@ import { initSearch } from "./features/search.js";
 import { initRecording } from "./features/recording.js";
 import { initAnalysis } from "./features/analysis.js";
 import { initHistory } from "./features/history.js";
+import { initHome } from "./features/home.js";
 import { initLiveGuide } from "./features/live-guide.js";
 
 const store = createStore(initialState, reducers);
@@ -26,6 +27,7 @@ initSearch(store, ctx);
 initRecording(store, ctx);
 initAnalysis(store, ctx);
 initHistory(store, ctx);
+initHome(store, ctx);
 initLiveGuide(store, ctx);
 
 // Initial paint for regions the store hasn't ticked yet.
@@ -35,4 +37,8 @@ ctx.refreshMicList(); // populate mic list (labels fill in after first permissio
 ctx.renderTakes().catch((error) => {
   document.getElementById("takesList").innerHTML =
     `<p class="empty-takes">Could not load takes: ${String(error.message).replace(/[&<>]/g, "")}</p>`;
+});
+ctx.renderHome().catch((error) => {
+  document.getElementById("homeSessionList").innerHTML =
+    `<p class="empty-takes">Could not load sessions: ${String(error.message).replace(/[&<>]/g, "")}</p>`;
 });
