@@ -8,7 +8,7 @@ import { WARMUP_LIBRARY, warmupForUrl, warmupLabelForUrl } from "../lib/warmups.
 
 const setupKey = "singing-practice-setup-v1";
 const libraryKey = "singing-song-library-v1";
-const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput"];
+const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput", "practiceGoal"];
 const defaultPracticeGoal = "Improve pitch";
 
 function valueOf(id) {
@@ -42,6 +42,8 @@ export function parseYouTubeId(value) {
 }
 
 export function initSetup(store, ctx) {
+  let selectedRecentIndex = -1;
+
   function readWarmupQueue() {
     return valueOf("warmupLinks").split(/\n+/).map((line) => line.trim()).filter(Boolean);
   }
@@ -115,7 +117,7 @@ export function initSetup(store, ctx) {
       lyricVideoUrl: valueOf("lyricVideoUrl").trim(),
       lyrics: valueOf("lyricsInput").trim(),
       syncedLyrics: valueOf("syncedLyricsData"),
-      practiceGoal: valueOf("practiceGoal") || defaultPracticeGoal,
+      practiceGoal: valueOf("practiceGoal").trim() || defaultPracticeGoal,
     };
   }
 
@@ -147,7 +149,7 @@ export function initSetup(store, ctx) {
     $("lyricVideoUrl").value = saved.lyricVideoUrl || "";
     $("lyricsInput").value = saved.lyrics || "";
     $("syncedLyricsData").value = saved.syncedLyrics || "";
-    setPracticeGoal(saved.practiceGoal || defaultPracticeGoal, { silent: true });
+    $("practiceGoal").value = saved.practiceGoal || defaultPracticeGoal;
   }
 
   function readLibrary() {
@@ -159,16 +161,18 @@ export function initSetup(store, ctx) {
     }
   }
 
-  function applySong(song) {
+  function applySong(song, index = -1) {
+    selectedRecentIndex = index;
     $("songTitle").value = song.songTitle || "";
     $("originalUrl").value = song.originalUrl || "";
     $("instrumentalUrl").value = song.instrumentalUrl || "";
     $("lyricVideoUrl").value = song.lyricVideoUrl || "";
     $("lyricsInput").value = song.lyrics || "";
     $("syncedLyricsData").value = song.syncedLyrics || "";
-    setPracticeGoal(song.practiceGoal || defaultPracticeGoal, { silent: true });
+    $("practiceGoal").value = song.practiceGoal || defaultPracticeGoal;
     writeWarmupQueue(Array.isArray(song.warmups) ? song.warmups : [], { silent: true });
     saveSetup({ silent: true });
+    renderRecentSongs();
   }
 
   function renderRecentSongs() {
@@ -179,8 +183,9 @@ export function initSetup(store, ctx) {
     library.forEach((song, index) => {
       const btn = document.createElement("button");
       btn.type = "button";
-      btn.className = "recent-song";
+      btn.className = `recent-song${index === selectedRecentIndex ? " active" : ""}`;
       btn.dataset.index = String(index);
+      if (index === selectedRecentIndex) btn.setAttribute("aria-current", "true");
       btn.innerHTML = `<span class="rs-title"></span><span class="rs-meta"></span>`;
       btn.querySelector(".rs-title").textContent = song.songTitle || "Untitled song";
       btn.querySelector(".rs-meta").textContent = song.savedAt
@@ -221,19 +226,11 @@ export function initSetup(store, ctx) {
     $("manualToggle").setAttribute("aria-expanded", String(open));
   }
 
-  function setPracticeGoal(goal, { silent = false } = {}) {
-    const next = goal || defaultPracticeGoal;
-    if ($("practiceGoal")) $("practiceGoal").value = next;
-    for (const button of document.querySelectorAll("[data-practice-goal]")) {
-      button.classList.toggle("active", button.dataset.practiceGoal === next);
-    }
-    if (!silent) saveSetup({ silent: true });
-  }
-
   $("startSession").addEventListener("click", () => {
     saveSetup({ silent: true });
     const snapshot = getSetup();
     localStorage.setItem(libraryKey, JSON.stringify(upsertSong(readLibrary(), snapshot)));
+    selectedRecentIndex = 0;
     renderRecentSongs();
     ctx.startNewSession?.();
     store.dispatch({ type: "setWarmupIndex", payload: 0 });
@@ -244,7 +241,7 @@ export function initSetup(store, ctx) {
     const btn = event.target.closest(".recent-song");
     if (!btn) return;
     const song = readLibrary()[Number(btn.dataset.index)];
-    if (song) applySong(song);
+    if (song) applySong(song, Number(btn.dataset.index));
   });
   $("editSetup").addEventListener("click", () => setStep("setup"));
   $("homeStartBottom")?.addEventListener("click", () => setStep("setup"));
@@ -288,9 +285,6 @@ export function initSetup(store, ctx) {
       if (id === "warmupLinks") renderWarmupQueue();
       saveSetup({ silent: true });
     });
-  }
-  for (const button of document.querySelectorAll("[data-practice-goal]")) {
-    button.addEventListener("click", () => setPracticeGoal(button.dataset.practiceGoal));
   }
   for (const button of document.querySelectorAll("[data-tab]")) {
     button.addEventListener("click", () => store.dispatch({ type: "setActiveTab", payload: button.dataset.tab }));

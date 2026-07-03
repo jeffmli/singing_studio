@@ -152,7 +152,7 @@ async function main() {
 
   // --- Start session (save + warmups) ---
   console.log("Start session (save + warmups)");
-  await page.click('[data-practice-goal="Record clean take"]');
+  await page.fill("#practiceGoal", "Record a clean chorus take");
   await page.fill("#warmupCustomUrl", "https://www.youtube.com/watch?v=ddddddddddd");
   await page.click("#warmupCustomAdd");
   check("custom warmup appears in queue", (await page.locator('#warmupQueue [data-warmup-url="https://www.youtube.com/watch?v=ddddddddddd"]').count()) === 1);
@@ -161,11 +161,11 @@ async function main() {
   check("session timer remains visible during session", await page.isVisible("#sessionTimer"));
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-setup-v1") || "{}"));
   check("setup persisted on start", Boolean(persisted.songTitle && persisted.songTitle.includes("Test Song")));
-  check("practice goal persisted on start", persisted.practiceGoal === "Record clean take");
+  check("practice goal persisted on start", persisted.practiceGoal === "Record a clean chorus take");
   check("warmup picker persisted queue", persisted.warmups.length === 3 && persisted.warmups.includes("https://www.youtube.com/watch?v=ddddddddddd"));
   const library = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-song-library-v1") || "[]"));
   check("song saved to library on start", library.length === 1 && library[0].songTitle.includes("Test Song"));
-  check("song library saves practice goal", library[0].practiceGoal === "Record clean take");
+  check("song library saves practice goal", library[0].practiceGoal === "Record a clean chorus take");
   check("warmup dots match link count", (await page.locator("#warmupDots .wd").count()) === 3);
   check("prev disabled at first warmup", await page.isDisabled("#prevWarmup"));
   await page.click("#nextWarmup");
@@ -277,7 +277,7 @@ async function main() {
   check("saved session appears on home", (await page.locator("#homeSessionList .session-card").count()) >= 1);
   const homeCardText = await page.textContent("#homeSessionList .session-card");
   check("home session shows reflection note", homeCardText.includes("breath control felt steady"));
-  check("home session shows practice goal", homeCardText.includes("Record clean take"));
+  check("home session shows practice goal", homeCardText.includes("Record a clean chorus take"));
   check("home session shows logged duration", /\d+:\d{2}/.test(homeCardText));
   await page.click("#homeSessionList .session-card summary");
   check("home expanded session shows recording", await waitTrue(() => document.querySelectorAll("#homeSessionList .take").length >= 1));
@@ -291,6 +291,8 @@ async function main() {
   await page.click("#recentSongList .recent-song");
   check("recent song click refills setup", (await page.inputValue("#songTitle")).includes("Test Song"));
   check("recent song click refills original url", (await page.inputValue("#originalUrl")).length > 0);
+  check("recent song click refills custom goal", (await page.inputValue("#practiceGoal")) === "Record a clean chorus take");
+  check("recent song stays highlighted", await page.locator("#recentSongList .recent-song.active").count() === 1);
 
   // --- History ---
   console.log("History panel");
@@ -300,7 +302,7 @@ async function main() {
   check("saved session appears in history", (await page.locator("#historyList .session-card").count()) >= 1);
   const cardText = await page.textContent("#historyList .session-card");
   check("session shows reflection note", cardText.includes("breath control felt steady"));
-  check("session shows practice goal", cardText.includes("Record clean take"));
+  check("session shows practice goal", cardText.includes("Record a clean chorus take"));
   await page.click("#closeHistory");
   check("history panel closes", await page.evaluate(() => !document.body.classList.contains("history-open")));
 
