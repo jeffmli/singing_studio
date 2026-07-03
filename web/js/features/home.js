@@ -1,5 +1,6 @@
 // web/js/features/home.js
-// Home dashboard: current focus song, previous sessions, and fresh-session entry.
+// Home dashboard: every saved session (expandable to its recordings) and the
+// single "Start new session" entry point.
 import { byId as $ } from "../core/dom.js";
 import { readSessions, readTakes, deleteTake } from "../core/db.js";
 
@@ -14,12 +15,6 @@ export function initHome(store, ctx) {
     }[char]));
   }
 
-  function hasFocus(setup) {
-    const title = String(setup.songTitle || "").trim();
-    const hasRealTitle = title && title !== "Practice Song";
-    return Boolean(hasRealTitle || setup.originalUrl || setup.instrumentalUrl || setup.lyricVideoUrl);
-  }
-
   function starsMarkup(rating) {
     let out = "";
     for (let i = 1; i <= 5; i++) out += `<span class="${i <= rating ? "" : "off"}">&#9733;</span>`;
@@ -32,10 +27,6 @@ export function initHome(store, ctx) {
     const mins = Math.max(1, Math.round((endedAt - startedAt) / 60000));
     const date = new Date(endedAt).toLocaleString([], { dateStyle: "medium", timeStyle: "short" });
     return `${date} · ${mins} min · ${takes.length} take${takes.length === 1 ? "" : "s"}`;
-  }
-
-  async function startFromHome() {
-    store.dispatch({ type: "setStep", payload: "setup" });
   }
 
   async function renderExpandedTakes(card) {
@@ -54,16 +45,6 @@ export function initHome(store, ctx) {
   }
 
   async function renderHome() {
-    const setup = ctx.getSetup();
-    const focus = hasFocus(setup);
-    $("homeFocusTitle").textContent = focus ? setup.songTitle || "Untitled song" : "Choose a song";
-    $("homeFocusMeta").textContent = focus
-      ? "Saved and ready to review before warmups."
-      : "Set up a song once, then it will be ready here next time.";
-    $("homeStartTop").textContent = focus ? "Review song" : "Choose a song";
-    $("homeStartTop").disabled = false;
-    $("homeStartBottom").disabled = !focus;
-
     const list = $("homeSessionList");
     let sessions = [];
     let allTakes = [];
@@ -81,7 +62,7 @@ export function initHome(store, ctx) {
     }
 
     if (!sessions.length) {
-      list.innerHTML = "<p class=\"empty-takes\">No saved sessions yet.<br>Finish a session with Finish &amp; reflect.</p>";
+      list.innerHTML = "<p class=\"empty-takes\">No sessions yet — start your first one below.</p>";
       return;
     }
 
@@ -110,9 +91,7 @@ export function initHome(store, ctx) {
     }
   }
 
-  $("homeStartTop").addEventListener("click", startFromHome);
-  $("homeStartBottom").addEventListener("click", startFromHome);
-  $("homeChangeSong").addEventListener("click", () => store.dispatch({ type: "setStep", payload: "setup" }));
+  $("homeStartBottom").addEventListener("click", () => store.dispatch({ type: "setStep", payload: "setup" }));
   $("homeSessionList").addEventListener("click", async (event) => {
     const analyzeBtn = event.target.closest("[data-analyze]");
     if (analyzeBtn) { ctx.analyzeTake(analyzeBtn.dataset.analyze); return; }

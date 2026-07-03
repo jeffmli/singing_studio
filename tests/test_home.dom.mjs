@@ -3,12 +3,8 @@ import "fake-indexeddb/auto";
 import { JSDOM } from "jsdom";
 
 const makeDom = () => new JSDOM(`<!doctype html><html><body>
-  <h2 id="homeFocusTitle"></h2>
-  <p id="homeFocusMeta"></p>
-  <button id="homeStartTop"></button>
-  <button id="homeStartBottom"></button>
-  <button id="homeChangeSong"></button>
   <div id="homeSessionList"></div>
+  <button id="homeStartBottom"></button>
 </body></html>`, { url: "http://localhost/" });
 
 const { createStore } = await import("../web/js/core/store.js");
@@ -50,10 +46,7 @@ await db.writeTake({
 
 let newSessionCalls = 0;
 let renderTakesCalls = 0;
-let saveCalls = 0;
 const ctx = {
-  getSetup: () => ({ songTitle: "My Focus Song", originalUrl: "https://youtu.be/aaaaaaaaaaa" }),
-  saveSetup: () => { saveCalls++; },
   startNewSession: () => { newSessionCalls++; },
   renderTakes: async () => { renderTakesCalls++; },
   buildTakeEl: (take) => {
@@ -68,21 +61,17 @@ const ctx = {
 initHome(store, ctx);
 await ctx.renderHome();
 
-ok("renders saved focus song", document.getElementById("homeFocusTitle").textContent.includes("My Focus Song"));
 ok("previous session listed", document.querySelectorAll("#homeSessionList .session-card").length === 1);
+ok("previous session shows song title", document.querySelector("#homeSessionList .session-card").textContent.includes("My Focus Song"));
 ok("previous session shows reflection", document.querySelector("#homeSessionList .session-card").textContent.includes("steady breath"));
-ok("focus top action reviews song", document.getElementById("homeStartTop").textContent === "Review song");
+ok("start button always enabled", !document.getElementById("homeStartBottom").disabled);
 
 document.getElementById("homeStartBottom").click();
 await new Promise((r) => setTimeout(r, 0));
-ok("start keeps setup unchanged", saveCalls === 0);
 ok("start does not create session yet", newSessionCalls === 0);
-ok("start moves to setup review", store.get().step === "setup");
+ok("start moves to setup", store.get().step === "setup");
 ok("start does not reset warmup index yet", store.get().warmupIndex === 2);
 ok("start does not refresh takes yet", renderTakesCalls === 0);
-
-document.getElementById("homeChangeSong").click();
-ok("change song moves to setup", store.get().step === "setup");
 
 document.querySelector("#homeSessionList .session-card summary").click();
 await new Promise((r) => setTimeout(r, 0));
@@ -93,16 +82,24 @@ const emptyDom = makeDom();
 globalThis.document = emptyDom.window.document;
 const emptyStore = createStore(initialState, reducers);
 const emptyCtx = {
-  getSetup: () => ({ songTitle: "", originalUrl: "", instrumentalUrl: "", lyricVideoUrl: "" }),
   buildTakeEl: () => document.createElement("article"),
 };
+// wipe sessions so the empty state renders
+const rawDb = await db.openDb();
+await new Promise((res, rej) => {
+  const tx = rawDb.transaction("sessions", "readwrite");
+  tx.objectStore("sessions").clear();
+  tx.oncomplete = res;
+  tx.onerror = () => rej(tx.error);
+});
+rawDb.close();
 initHome(emptyStore, emptyCtx);
 await emptyCtx.renderHome();
 
-ok("empty focus changes top action", document.getElementById("homeStartTop").textContent === "Choose a song");
-ok("empty focus disables bottom start", document.getElementById("homeStartBottom").disabled);
-document.getElementById("homeStartTop").click();
-ok("empty focus sends user to setup", emptyStore.get().step === "setup");
+ok("empty state invites first session", document.getElementById("homeSessionList").textContent.includes("No sessions yet"));
+ok("empty state keeps start enabled", !document.getElementById("homeStartBottom").disabled);
+document.getElementById("homeStartBottom").click();
+ok("empty home sends user to setup", emptyStore.get().step === "setup");
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAIL"}: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
