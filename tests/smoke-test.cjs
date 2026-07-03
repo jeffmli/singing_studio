@@ -115,10 +115,13 @@ async function main() {
   });
   await page.goto(BASE, { waitUntil: "networkidle" });
 
-  // --- Load & Setup ---
-  console.log("Load & Setup");
+  // --- Load & Home ---
+  console.log("Load & Home");
   check("page title is correct", (await page.title()) === "Singing Practice Studio");
-  check("setup stage is active on load", await page.isVisible("#stageSetup.active"));
+  check("home stage is active on load", await page.isVisible("#stageHome.active"));
+  check("empty home prompts song setup", (await page.textContent("#homeFocusTitle")).includes("Choose a song"));
+  await page.click("#homeChangeSong");
+  check("change song opens setup", await page.isVisible("#stageSetup.active"));
   check("search bar present", await page.isVisible("#songSearch"));
   check("manual fields collapsed by default", !(await page.evaluate(() => document.getElementById("manualSetup").classList.contains("open"))));
 
@@ -147,10 +150,12 @@ async function main() {
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-setup-v1") || "{}"));
   check("setup persisted to localStorage", persisted.songTitle && persisted.songTitle.includes("Test Song"));
 
-  // --- Start session -> warmups ---
-  console.log("Start Session → Warmups");
+  // --- Start from Home -> warmups ---
+  console.log("Home → New Session → Warmups");
   await page.fill("#warmupLinks", "https://www.youtube.com/watch?v=ddddddddddd\nhttps://www.youtube.com/watch?v=eeeeeeeeeee");
-  await page.click("#startSession");
+  await page.click('.step[data-step="home"]');
+  check("saved song appears on home", (await page.textContent("#homeFocusTitle")).includes("Test Song"));
+  await page.click("#homeStartTop");
   check("warmups stage active after start", await page.isVisible("#stageWarmups.active"));
   check("warmup dots match link count", (await page.locator("#warmupDots .wd").count()) === 2);
   check("prev disabled at first warmup", await page.isDisabled("#prevWarmup"));
@@ -250,6 +255,17 @@ async function main() {
   await page.click("#reflectSave");
   check("reflection modal closes after save", await waitTrue(() => !document.body.classList.contains("reflect-open")));
   check("takes badge resets for new session", await waitTrue(() => document.getElementById("takesCount").textContent === "0"));
+
+  // --- Home history ---
+  console.log("Home history");
+  await page.click('.step[data-step="home"]');
+  await page.waitForSelector("#homeSessionList .session-card", { timeout: 10000 });
+  check("saved session appears on home", (await page.locator("#homeSessionList .session-card").count()) >= 1);
+  const homeCardText = await page.textContent("#homeSessionList .session-card");
+  check("home session shows reflection note", homeCardText.includes("breath control felt steady"));
+  await page.click("#homeSessionList .session-card summary");
+  check("home expanded session shows recording", await waitTrue(() => document.querySelectorAll("#homeSessionList .take").length >= 1));
+  check("bottom start is available", await page.isVisible("#homeStartBottom"));
 
   // --- History ---
   console.log("History panel");

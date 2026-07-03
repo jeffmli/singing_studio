@@ -61,6 +61,8 @@ body.history-open #historyDrawer { transform: translateX(0); }
 .session-card .sc-reflect .r b { color: var(--amber-bright); font-weight: 600; }
 .session-card .sc-takes { border-top: 1px solid var(--line); padding: 14px 16px; display: grid; gap: 12px; }
 .session-card .sc-takes .take { padding: 12px; }
+.home-history .session-card { margin: 0; }
+.home-history .session-card[open] { border-color: rgba(245,165,36,0.28); }
 
 /* ---------- Reflection modal ---------- */
 .modal-wrap {
