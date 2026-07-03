@@ -11,6 +11,7 @@ import { initRecording } from "./features/recording.js";
 import { initAnalysis } from "./features/analysis.js";
 import { initHistory } from "./features/history.js";
 import { initHome } from "./features/home.js";
+import { initPiano } from "./features/piano.js";
 import { initLiveGuide } from "./features/live-guide.js";
 
 const store = createStore(initialState, reducers);
@@ -28,6 +29,7 @@ initRecording(store, ctx);
 initAnalysis(store, ctx);
 initHistory(store, ctx);
 initHome(store, ctx);
+initPiano(store, ctx);
 initLiveGuide(store, ctx);
 
 // Initial paint for regions the store hasn't ticked yet.

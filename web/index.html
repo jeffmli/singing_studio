@@ -214,6 +214,32 @@
           </div>
           <div id="lyricsPane" class="lyrics-view hidden"></div>
         </div>
+        <details class="piano-practice" aria-label="Piano note practice">
+          <summary>
+            <span>
+              <b>Piano / note practice</b>
+              <small>Play a note, then match it with your voice</small>
+            </span>
+            <span class="summary-action">Open</span>
+          </summary>
+          <div class="piano-panel">
+            <div class="piano-topline">
+              <div class="readout"><span>Active note</span><b id="pianoActiveNote">--</b></div>
+              <p id="pianoStatus" class="guide-status">Pick a note to hear a reference tone.</p>
+            </div>
+            <div id="pianoKeys" class="piano-keys" aria-label="Piano keyboard"></div>
+            <div class="guide-actions">
+              <button id="pianoStartMatch" class="primary">Start match</button>
+              <button id="pianoStopMatch" class="ghost" disabled>Stop match</button>
+            </div>
+            <div class="guide-readouts">
+              <div class="readout"><span>Target</span><b id="pianoTargetNote">C4</b></div>
+              <div class="readout"><span>You</span><b id="pianoUserNote">--</b></div>
+              <div class="readout"><span>Difference</span><b id="pianoPitchDelta">--</b></div>
+              <div class="readout feedback"><span>Feedback</span><b id="pianoFeedback">Pick note</b></div>
+            </div>
+          </div>
+        </details>
         <details class="live-guide" aria-label="Live pitch guide">
           <summary>
             <span>
