@@ -20,9 +20,9 @@ const dom = new JSDOM(`<!doctype html><html><body>
 globalThis.document = dom.window.document;
 globalThis.localStorage = dom.window.localStorage;
 
-const { createStore } = await import("./web/js/core/store.js");
-const { initialState, reducers } = await import("./web/js/core/actions.js");
-const { initSetup, parseYouTubeId } = await import("./web/js/features/setup.js");
+const { createStore } = await import("../web/js/core/store.js");
+const { initialState, reducers } = await import("../web/js/core/actions.js");
+const { initSetup, parseYouTubeId } = await import("../web/js/features/setup.js");
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };

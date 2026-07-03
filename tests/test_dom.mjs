@@ -3,7 +3,7 @@ import { JSDOM } from "jsdom";
 const dom = new JSDOM("<!doctype html><html><body><div id='root'></div></body></html>");
 globalThis.document = dom.window.document;
 
-const { html, raw, escapeHtml, mount, renderList, byId } = await import("./web/js/core/dom.js");
+const { html, raw, escapeHtml, mount, renderList, byId } = await import("../web/js/core/dom.js");
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };

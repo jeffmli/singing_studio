@@ -8,7 +8,7 @@ const dom = new JSDOM(`<!doctype html><html><body>
 globalThis.document = dom.window.document;
 globalThis.window = dom.window;
 
-const { initAnalysis } = await import("./web/js/features/analysis.js");
+const { initAnalysis } = await import("../web/js/features/analysis.js");
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };
@@ -17,7 +17,7 @@ const ctx = { getSetup: () => ({ originalUrl: "" }), closePanels: () => {} };
 initAnalysis(null, ctx);
 
 // renderAnalysis is internal; drive it through analyzeTake with a mocked fetch.
-const db = await import("./web/js/core/db.js");
+const db = await import("../web/js/core/db.js");
 const blob = new Blob(["x"], { type: "audio/webm" });
 await db.writeTake({ id: "t1", createdAt: 1, title: "Take", blob, originalUrl: "https://youtu.be/aaaaaaaaaaa" });
 

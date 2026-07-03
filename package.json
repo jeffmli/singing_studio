@@ -4,7 +4,7 @@
   "private": true,
   "description": "Self-guided singing practice studio",
   "scripts": {
-    "test": "node smoke-test.cjs"
+    "test": "node tests/smoke-test.cjs"
   },
   "devDependencies": {
     "fake-indexeddb": "^6.2.5",

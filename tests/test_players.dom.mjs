@@ -10,9 +10,9 @@ const dom = new JSDOM(`<!doctype html><html><body>
 globalThis.document = dom.window.document;
 globalThis.window = dom.window;
 
-const { createStore } = await import("./web/js/core/store.js");
-const { initialState, reducers } = await import("./web/js/core/actions.js");
-const { initPlayers } = await import("./web/js/features/players.js");
+const { createStore } = await import("../web/js/core/store.js");
+const { initialState, reducers } = await import("../web/js/core/actions.js");
+const { initPlayers } = await import("../web/js/features/players.js");
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };

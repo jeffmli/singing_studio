@@ -7,7 +7,8 @@ Runs on a local vocal file (no network / Demucs), asserting:
 
 Run under the analysis venv:  .venv/bin/python test_analysis.py [vocals.wav]
 """
-import sys
+import os, sys
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import numpy as np
 import pitch as analysis
 
@@ -48,9 +49,8 @@ def test_play_original_scores_high():
     Skipped unless the spike's vocal stem + matching full mix are present, since it
     needs Demucs. STEM must be the separated vocals of MIX.
     """
-    import os
     STEM = "/tmp/spike/vocals.wav"
-    MIX = os.path.join(os.path.dirname(__file__), "..", "pitch-spike", "clip.wav")
+    MIX = os.path.join(os.path.dirname(__file__), "..", "..", "pitch-spike", "clip.wav")
     if not (os.path.exists(STEM) and os.path.exists(MIX)):
         print("skip play_original (audio fixtures missing)")
         return

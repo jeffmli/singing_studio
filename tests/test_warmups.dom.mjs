@@ -7,9 +7,9 @@ const dom = new JSDOM(`<!doctype html><html><body>
 </body></html>`, { url: "http://localhost/" });
 globalThis.document = dom.window.document;
 
-const { createStore } = await import("./web/js/core/store.js");
-const { initialState, reducers } = await import("./web/js/core/actions.js");
-const { initWarmups } = await import("./web/js/features/warmups.js");
+const { createStore } = await import("../web/js/core/store.js");
+const { initialState, reducers } = await import("../web/js/core/actions.js");
+const { initWarmups } = await import("../web/js/features/warmups.js");
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };

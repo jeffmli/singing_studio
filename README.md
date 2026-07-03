@@ -88,10 +88,12 @@ npm test
 
 | File | Purpose |
 | --- | --- |
-| `index.html` | The entire front-end (HTML/CSS/JS, single file) |
-| `server.py` | Static server + `/api/search` (yt-dlp + lyrics) |
-| `smoke-test.cjs` | Playwright end-to-end smoke test |
+| `web/` | Front-end: `index.html` skeleton, `js/` (reactive core + feature modules), `styles/` |
+| `server.py` | Static server + APIs (`/api/search`, `/api/alt`, `/api/reference`, `/api/analyze`) |
+| `tests/` | All tests: `smoke-test.cjs` (Playwright e2e), `test_*.mjs` (node/jsdom units), `test_*.py` |
 | `docs/singing-practice-prd.md` | Product requirements |
+
+Run the browser smoke test with `npm test`. Node unit tests: `node tests/test_<name>.mjs`.
 
 ## Privacy
 

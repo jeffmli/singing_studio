@@ -2,7 +2,7 @@
  * Unit tests for the mic option-list builder (web/js/lib/mic.js).
  * Imports the real ES module. Run:  node test_mic.mjs
  */
-import { micOptions } from "./web/js/lib/mic.js";
+import { micOptions } from "../web/js/lib/mic.js";
 
 let pass = 0, fail = 0;
 function ok(name, cond) { if (cond) { console.log("  ✓ " + name); pass++; } else { console.log("  ✗ " + name); fail++; } }

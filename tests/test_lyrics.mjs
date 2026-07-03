@@ -2,7 +2,7 @@
  * Unit tests for the LRC parsing / lookup module (web/js/lib/lyrics.js).
  * Imports the real ES module. Run:  node test_lyrics.mjs
  */
-import { parseLrc, lyricLineAt } from "./web/js/lib/lyrics.js";
+import { parseLrc, lyricLineAt } from "../web/js/lib/lyrics.js";
 
 let pass = 0, fail = 0;
 function ok(name, cond) { if (cond) { console.log("  ✓ " + name); pass++; } else { console.log("  ✗ " + name); fail++; } }

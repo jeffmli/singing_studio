@@ -25,9 +25,9 @@ Object.defineProperty(dom.window.navigator, "mediaDevices", {
   configurable: true,
 });
 
-const { createStore } = await import("./web/js/core/store.js");
-const { initialState, reducers } = await import("./web/js/core/actions.js");
-const { initRecording } = await import("./web/js/features/recording.js");
+const { createStore } = await import("../web/js/core/store.js");
+const { initialState, reducers } = await import("../web/js/core/actions.js");
+const { initRecording } = await import("../web/js/features/recording.js");
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };

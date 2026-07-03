@@ -5,7 +5,7 @@
  * browser. Focus: accuracy on clean tones and octave robustness on harmonic-
  * rich / missing-fundamental signals. Run:  node test_pitch.mjs
  */
-import { detectPitchHz, hzToMidi, noteName, medianOf } from "./web/js/lib/pitch.js";
+import { detectPitchHz, hzToMidi, noteName, medianOf } from "../web/js/lib/pitch.js";
 
 const SR = 44100;
 const N = 2048;

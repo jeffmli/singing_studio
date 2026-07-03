@@ -1,6 +1,6 @@
 // test_db.mjs
 import "fake-indexeddb/auto";
-const db = await import("./web/js/core/db.js");
+const db = await import("../web/js/core/db.js");
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };

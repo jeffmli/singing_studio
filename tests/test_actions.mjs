@@ -1,5 +1,5 @@
 // test_actions.mjs
-import { initialState, reducers } from "./web/js/core/actions.js";
+import { initialState, reducers } from "../web/js/core/actions.js";
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };

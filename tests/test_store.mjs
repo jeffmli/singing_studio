@@ -1,5 +1,5 @@
 // test_store.mjs
-import { createStore } from "./web/js/core/store.js";
+import { createStore } from "../web/js/core/store.js";
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };

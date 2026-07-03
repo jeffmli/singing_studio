@@ -12,7 +12,7 @@ const dom = new JSDOM(`<!doctype html><html><body>
 </body></html>`, { url: "http://localhost/" });
 globalThis.document = dom.window.document;
 
-const { initSearch } = await import("./web/js/features/search.js");
+const { initSearch } = await import("../web/js/features/search.js");
 
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };
