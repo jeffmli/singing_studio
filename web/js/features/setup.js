@@ -64,13 +64,15 @@ export function initSetup(store, ctx) {
     list.innerHTML = "";
     const selected = new Set(readWarmupQueue());
     for (const item of WARMUP_LIBRARY) {
+      const isSelected = selected.has(item.url);
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "warmup-library-item";
+      button.className = `warmup-library-item${isSelected ? " selected" : ""}`;
       button.dataset.addWarmup = item.url;
-      button.disabled = selected.has(item.url);
+      button.disabled = isSelected;
+      button.setAttribute("aria-pressed", String(isSelected));
       button.innerHTML = `
-        <span class="wl-title">${escapeHtml(item.title)}</span>
+        <span class="wl-row"><span class="wl-title">${escapeHtml(item.title)}</span>${isSelected ? "<span class=\"wl-state\">Queued</span>" : ""}</span>
         <span class="wl-meta">${escapeHtml(item.type)} · ${escapeHtml(item.note || "")}</span>
       `;
       list.appendChild(button);

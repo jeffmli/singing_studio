@@ -89,6 +89,32 @@
           </div>
           <p id="searchStatus" class="search-status muted">Type a song name and hit Search.</p>
         </div>
+        <section class="warmup-flow" id="warmupPicker" aria-label="Pick warm-up exercises">
+          <div class="section-heading">
+            <div>
+              <h3>Pick warm-ups</h3>
+              <p class="hint">Defaults are ready. Add, remove, or paste YouTube warm-ups before you start.</p>
+            </div>
+          </div>
+          <div class="warmup-picker">
+            <div class="warmup-library" id="warmupLibrary" aria-label="Warm-up library"></div>
+            <div class="warmup-queue-wrap">
+              <div class="warmup-queue-head">
+                <span>Your warm-up queue</span>
+                <span class="hint">Plays in this order</span>
+              </div>
+              <div class="warmup-queue" id="warmupQueue"></div>
+              <div class="custom-warmup">
+                <input id="warmupCustomUrl" placeholder="Paste custom YouTube warm-up URL" />
+                <button type="button" class="ghost" id="warmupCustomAdd">Add</button>
+              </div>
+              <details class="advanced-warmups">
+                <summary>Advanced URL list</summary>
+                <textarea id="warmupLinks" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
+              </details>
+            </div>
+          </div>
+        </section>
         <div class="manual-setup" id="manualSetup">
         <button type="button" class="manual-toggle" id="manualToggle" aria-expanded="false">
           <span>Enter or edit details manually</span>
@@ -117,33 +143,12 @@
             </div>
           </div>
           <div class="setup-section">
-            <h3>Lyrics &amp; Warmups</h3>
-            <p class="hint">Your words on screen, your vocal warmups queued up.</p>
+            <h3>Lyrics</h3>
+            <p class="hint">Paste lyrics if search does not find them.</p>
             <div class="field">
               <label for="lyricsInput">Lyrics</label>
               <textarea id="lyricsInput" placeholder="Paste the lyrics here..."></textarea>
               <input id="syncedLyricsData" type="hidden" />
-            </div>
-            <div class="field">
-              <label>Warm-up picker</label>
-              <div class="warmup-picker">
-                <div class="warmup-library" id="warmupLibrary" aria-label="Warm-up library"></div>
-                <div class="warmup-queue-wrap">
-                  <div class="warmup-queue-head">
-                    <span>Your warm-up queue</span>
-                    <span class="hint">Plays in this order</span>
-                  </div>
-                  <div class="warmup-queue" id="warmupQueue"></div>
-                  <div class="custom-warmup">
-                    <input id="warmupCustomUrl" placeholder="Paste custom YouTube warm-up URL" />
-                    <button type="button" class="ghost" id="warmupCustomAdd">Add</button>
-                  </div>
-                  <details class="advanced-warmups">
-                    <summary>Advanced URL list</summary>
-                    <textarea id="warmupLinks" placeholder="https://youtube.com/watch?v=...&#10;https://youtube.com/watch?v=..."></textarea>
-                  </details>
-                </div>
-              </div>
             </div>
           </div>
         </div>
@@ -181,6 +186,32 @@
             <div id="warmupPlaceholder" class="placeholder"><div><div class="pi">&#9835;</div>Add warmup videos in Setup, then press Start Session.</div></div>
           </div>
         </div>
+        <details class="piano-practice" aria-label="Piano note practice">
+          <summary>
+            <span>
+              <b>Piano / note practice</b>
+              <small>Play a note, then match it with your voice</small>
+            </span>
+            <span class="summary-action">Open</span>
+          </summary>
+          <div class="piano-panel">
+            <div class="piano-topline">
+              <div class="readout"><span>Active note</span><b id="pianoActiveNote">--</b></div>
+              <p id="pianoStatus" class="guide-status">Pick a note to hear a reference tone.</p>
+            </div>
+            <div id="pianoKeys" class="piano-keys" aria-label="Piano keyboard"></div>
+            <div class="guide-actions">
+              <button id="pianoStartMatch" class="primary">Start match</button>
+              <button id="pianoStopMatch" class="ghost" disabled>Stop match</button>
+            </div>
+            <div class="guide-readouts">
+              <div class="readout"><span>Target</span><b id="pianoTargetNote">C4</b></div>
+              <div class="readout"><span>You</span><b id="pianoUserNote">--</b></div>
+              <div class="readout"><span>Difference</span><b id="pianoPitchDelta">--</b></div>
+              <div class="readout feedback"><span>Feedback</span><b id="pianoFeedback">Pick note</b></div>
+            </div>
+          </div>
+        </details>
         <div class="warmup-controls">
           <button id="prevWarmup" class="ghost">&larr; Previous</button>
           <button id="nextWarmup" class="ghost">Next &rarr;</button>
@@ -209,32 +240,6 @@
           </div>
           <div id="lyricsPane" class="lyrics-view hidden"></div>
         </div>
-        <details class="piano-practice" aria-label="Piano note practice">
-          <summary>
-            <span>
-              <b>Piano / note practice</b>
-              <small>Play a note, then match it with your voice</small>
-            </span>
-            <span class="summary-action">Open</span>
-          </summary>
-          <div class="piano-panel">
-            <div class="piano-topline">
-              <div class="readout"><span>Active note</span><b id="pianoActiveNote">--</b></div>
-              <p id="pianoStatus" class="guide-status">Pick a note to hear a reference tone.</p>
-            </div>
-            <div id="pianoKeys" class="piano-keys" aria-label="Piano keyboard"></div>
-            <div class="guide-actions">
-              <button id="pianoStartMatch" class="primary">Start match</button>
-              <button id="pianoStopMatch" class="ghost" disabled>Stop match</button>
-            </div>
-            <div class="guide-readouts">
-              <div class="readout"><span>Target</span><b id="pianoTargetNote">C4</b></div>
-              <div class="readout"><span>You</span><b id="pianoUserNote">--</b></div>
-              <div class="readout"><span>Difference</span><b id="pianoPitchDelta">--</b></div>
-              <div class="readout feedback"><span>Feedback</span><b id="pianoFeedback">Pick note</b></div>
-            </div>
-          </div>
-        </details>
         <details class="live-guide" aria-label="Live pitch guide">
           <summary>
             <span>

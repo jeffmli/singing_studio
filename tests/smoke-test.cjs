@@ -128,6 +128,9 @@ async function main() {
   check("recent songs hidden when library empty", !(await page.isVisible("#recentSongs")));
   check("search bar present", await page.isVisible("#songSearch"));
   check("manual fields collapsed by default", !(await page.evaluate(() => document.getElementById("manualSetup").classList.contains("open"))));
+  check("warmup picker visible in start flow", await page.isVisible("#warmupPicker"));
+  check("default warmups visible before manual details", (await page.locator("#warmupQueue [data-warmup-url]").count()) === 2);
+  check("custom warmup paste visible in start flow", await page.isVisible("#warmupCustomUrl"));
 
   // --- Search auto-fill ---
   console.log("Search auto-fill");
@@ -167,6 +170,15 @@ async function main() {
   check("song saved to library on start", library.length === 1 && library[0].songTitle.includes("Test Song"));
   check("song library saves practice goal", library[0].practiceGoal === "Record a clean chorus take");
   check("warmup dots match link count", (await page.locator("#warmupDots .wd").count()) === 3);
+  check("piano practice is available during warmups", await page.isVisible("#stageWarmups .piano-practice summary"));
+  await page.click("#stageWarmups .piano-practice summary");
+  check("piano keys render during warmups", (await page.locator("#pianoKeys [data-midi]").count()) === 49);
+  await page.click('#pianoKeys [data-midi="60"]');
+  check("piano note click updates active note during warmups", (await page.textContent("#pianoActiveNote")) === "C4");
+  await page.click("#pianoStartMatch");
+  check("piano match starts during warmups", await waitTrue(() => document.getElementById("pianoStopMatch").disabled === false));
+  await page.click("#pianoStopMatch");
+  check("piano match stops during warmups", await waitTrue(() => document.getElementById("pianoStopMatch").disabled === true));
   check("prev disabled at first warmup", await page.isDisabled("#prevWarmup"));
   await page.click("#nextWarmup");
   check("prev enabled after next", !(await page.isDisabled("#prevWarmup")));
@@ -182,7 +194,7 @@ async function main() {
   check("take label controls removed", (await page.locator("#tempoPills").count()) === 0);
   check("lyric overlay removed from video pane", (await page.locator("#lyricOverlay").count()) === 0);
   check("source tabs remain", (await page.locator('[data-tab="original"], [data-tab="instrumental"], [data-tab="lyricVideo"], [data-tab="lyrics"]').count()) === 4);
-  check("piano practice is available", await page.isVisible(".piano-practice summary"));
+  check("piano practice moved out of sing", (await page.locator("#stageSong .piano-practice").count()) === 0);
   check("live pitch guide is collapsed by default", await page.isVisible(".live-guide summary") && !(await page.isVisible("#prepareGuide")));
 
   // --- Source tabs ---
@@ -192,17 +204,6 @@ async function main() {
   check("video pane hidden on Lyrics tab", !(await page.isVisible("#videoPane")));
   await page.click('[data-tab="original"]');
   check("video pane shows on Original tab", await page.isVisible("#videoPane"));
-
-  // --- Piano practice ---
-  console.log("Piano practice");
-  await page.click(".piano-practice summary");
-  check("piano keys render", (await page.locator("#pianoKeys [data-midi]").count()) === 49);
-  await page.click('#pianoKeys [data-midi="60"]');
-  check("piano note click updates active note", (await page.textContent("#pianoActiveNote")) === "C4");
-  await page.click("#pianoStartMatch");
-  check("piano match starts", await waitTrue(() => document.getElementById("pianoStopMatch").disabled === false));
-  await page.click("#pianoStopMatch");
-  check("piano match stops", await waitTrue(() => document.getElementById("pianoStopMatch").disabled === true));
 
   // --- Live pitch guide ---
   console.log("Live pitch guide");

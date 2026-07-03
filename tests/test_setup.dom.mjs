@@ -47,6 +47,8 @@ ok("loadSetup seeds fallback title", document.getElementById("songTitle").value 
 ok("loadSetup seeds fallback goal", document.getElementById("practiceGoal").value === "Improve pitch");
 ok("warmup library renders starter items", document.querySelectorAll("#warmupLibrary [data-add-warmup]").length >= 6);
 ok("fallback warmups hydrate queue", document.querySelectorAll("#warmupQueue [data-warmup-url]").length === 2);
+ok("queued default warmups are visibly selected", document.querySelectorAll("#warmupLibrary .warmup-library-item.selected").length === 2);
+ok("queued default warmups expose selected state", [...document.querySelectorAll("#warmupLibrary .warmup-library-item.selected")].every((button) => button.getAttribute("aria-pressed") === "true"));
 ok("recent songs hidden when library empty", document.getElementById("recentSongs").hidden);
 
 const firstWarmupAdd = [...document.querySelectorAll("#warmupLibrary [data-add-warmup]")].find((button) => !button.disabled);
