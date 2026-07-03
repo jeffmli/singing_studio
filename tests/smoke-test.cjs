@@ -119,9 +119,11 @@ async function main() {
   console.log("Load & Home");
   check("page title is correct", (await page.title()) === "Singing Practice Studio");
   check("home stage is active on load", await page.isVisible("#stageHome.active"));
-  check("empty home prompts song setup", (await page.textContent("#homeFocusTitle")).includes("Choose a song"));
-  await page.click("#homeChangeSong");
-  check("change song opens setup", await page.isVisible("#stageSetup.active"));
+  check("empty home invites first session", (await page.textContent("#homeSessionList")).includes("No sessions yet"));
+  await page.click("#homeStartBottom");
+  check("start new session opens setup", await page.isVisible("#stageSetup.active"));
+  check("setup page is pick-a-song copy", (await page.textContent("#stageSetup .stage-title")).includes("Pick your song"));
+  check("recent songs hidden when library empty", !(await page.isVisible("#recentSongs")));
   check("search bar present", await page.isVisible("#songSearch"));
   check("manual fields collapsed by default", !(await page.evaluate(() => document.getElementById("manualSetup").classList.contains("open"))));
 
@@ -144,24 +146,15 @@ async function main() {
   await page.click("#manualToggle");
   check("manual section expands on toggle", await waitTrue(() => document.getElementById("manualSetup").classList.contains("open")));
 
-  // --- Save setup ---
-  console.log("Save Setup");
-  await page.click("#saveSetup");
-  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-setup-v1") || "{}"));
-  check("setup persisted to localStorage", persisted.songTitle && persisted.songTitle.includes("Test Song"));
-
-  // --- Start from Home -> review setup -> warmups ---
-  console.log("Home → Review Song → Warmups");
+  // --- Start session (save + warmups) ---
+  console.log("Start session (save + warmups)");
   await page.fill("#warmupLinks", "https://www.youtube.com/watch?v=ddddddddddd\nhttps://www.youtube.com/watch?v=eeeeeeeeeee");
-  await page.click('.step[data-step="home"]');
-  check("saved song appears on home", (await page.textContent("#homeFocusTitle")).includes("Test Song"));
-  check("top song action is review", (await page.textContent("#homeStartTop")).includes("Review song"));
-  await page.click("#homeStartBottom");
-  check("home start opens prefilled setup", await page.isVisible("#stageSetup.active"));
-  check("prefilled setup keeps song title", (await page.inputValue("#songTitle")).includes("Test Song"));
-  check("setup page is review copy", (await page.textContent("#stageSetup .stage-title")).includes("Review your song"));
   await page.click("#startSession");
   check("warmups stage active after start", await page.isVisible("#stageWarmups.active"));
+  const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-setup-v1") || "{}"));
+  check("setup persisted on start", Boolean(persisted.songTitle && persisted.songTitle.includes("Test Song")));
+  const library = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-song-library-v1") || "[]"));
+  check("song saved to library on start", library.length === 1 && library[0].songTitle.includes("Test Song"));
   check("warmup dots match link count", (await page.locator("#warmupDots .wd").count()) === 2);
   check("prev disabled at first warmup", await page.isDisabled("#prevWarmup"));
   await page.click("#nextWarmup");
@@ -271,6 +264,15 @@ async function main() {
   await page.click("#homeSessionList .session-card summary");
   check("home expanded session shows recording", await waitTrue(() => document.querySelectorAll("#homeSessionList .take").length >= 1));
   check("bottom start is available", await page.isVisible("#homeStartBottom"));
+
+  // --- Recent songs on setup ---
+  console.log("Recent songs");
+  await page.click('.step[data-step="setup"]');
+  check("recent songs visible after a session", await page.isVisible("#recentSongs"));
+  await page.evaluate(() => { document.getElementById("songTitle").value = ""; });
+  await page.click("#recentSongList .recent-song");
+  check("recent song click refills setup", (await page.inputValue("#songTitle")).includes("Test Song"));
+  check("recent song click refills original url", (await page.inputValue("#originalUrl")).length > 0);
 
   // --- History ---
   console.log("History panel");

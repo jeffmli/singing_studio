@@ -13,9 +13,13 @@ It runs entirely on your own machine. No accounts, no cloud, no API keys.
 - **Search a song by name** — auto-finds the original, instrumental/karaoke, and
   lyric videos on YouTube (via `yt-dlp`, no API key) plus the lyrics, and
   auto-fills your session. Manual fields stay tucked away until you need them.
+- **Recent songs** — every song you practice is saved locally; one click on the
+  setup page reloads everything (videos, lyrics, warmups). No re-search.
 - **Self-healing videos** — if a video refuses to embed ("Video unavailable"),
   the app automatically finds and swaps in another that plays.
-- **Three-stage flow** — one focused screen at a time: Setup → Warmups → Sing.
+- **Home → Pick your song → Warmups → Sing** — the homepage lists every saved
+  session (open one to hear its recordings); starting a new session walks you
+  through one focused screen at a time.
 - **Step through warmups** with embedded YouTube exercises.
 - **Sing** with the original, instrumental, lyric video, or on-screen lyrics.
 - **Phrase + tempo drill tracking** — label takes as Slow / Medium / Normal and
@@ -74,7 +78,7 @@ it manually if it picks the wrong track.
 ## Tests
 
 A Playwright smoke test drives the real app and checks every button — search
-auto-fill, save setup, start session, warmup nav, stepper, source tabs,
+auto-fill, save-on-start, recent songs, warmup nav, stepper, source tabs,
 record/stop (with a fake mic), phrase/tempo take labels, playback pace, lyric overlay, live pitch guide,
 mocked pitch analysis, takes drawer, finish & reflect, and history.
 
