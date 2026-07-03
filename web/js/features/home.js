@@ -35,15 +35,7 @@ export function initHome(store, ctx) {
   }
 
   async function startFromHome() {
-    if (!hasFocus(ctx.getSetup())) {
-      store.dispatch({ type: "setStep", payload: "setup" });
-      return;
-    }
-    ctx.saveSetup?.({ silent: true });
-    ctx.startNewSession?.();
-    store.dispatch({ type: "setWarmupIndex", payload: 0 });
-    store.dispatch({ type: "setStep", payload: "warmups" });
-    await ctx.renderTakes?.();
+    store.dispatch({ type: "setStep", payload: "setup" });
   }
 
   async function renderExpandedTakes(card) {
@@ -66,9 +58,9 @@ export function initHome(store, ctx) {
     const focus = hasFocus(setup);
     $("homeFocusTitle").textContent = focus ? setup.songTitle || "Untitled song" : "Choose a song";
     $("homeFocusMeta").textContent = focus
-      ? "Ready for a fresh practice session."
+      ? "Saved and ready to review before warmups."
       : "Set up a song once, then it will be ready here next time.";
-    $("homeStartTop").textContent = focus ? "Start new session" : "Choose a song";
+    $("homeStartTop").textContent = focus ? "Review song" : "Choose a song";
     $("homeStartTop").disabled = false;
     $("homeStartBottom").disabled = !focus;
 

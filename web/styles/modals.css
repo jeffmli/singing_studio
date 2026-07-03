@@ -43,15 +43,15 @@ body.history-open #historyDrawer { transform: translateX(0); }
 /* ---------- History cards ---------- */
 .session-card {
   border: 1px solid var(--line); border-radius: var(--radius-sm);
-  background: rgba(0,0,0,0.22); overflow: hidden;
+  background: linear-gradient(180deg, rgba(255,255,255,0.035), rgba(0,0,0,0.18)); overflow: hidden;
 }
 .session-card > summary {
-  list-style: none; cursor: pointer; padding: 15px 16px;
+  list-style: none; cursor: pointer; padding: 16px 18px;
   display: grid; gap: 6px;
 }
 .session-card > summary::-webkit-details-marker { display: none; }
 .session-card .sc-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.session-card .sc-song { font-family: var(--display); font-weight: 500; font-size: 17px; }
+.session-card .sc-song { font-family: var(--display); font-weight: 500; font-size: 18px; }
 .session-card .sc-date { color: #978976; font-size: 12.5px; white-space: nowrap; }
 .session-card .sc-stars { color: var(--amber); letter-spacing: 2px; font-size: 14px; }
 .session-card .sc-stars .off { color: rgba(255,255,255,0.16); }
@@ -63,6 +63,9 @@ body.history-open #historyDrawer { transform: translateX(0); }
 .session-card .sc-takes .take { padding: 12px; }
 .home-history .session-card { margin: 0; }
 .home-history .session-card[open] { border-color: rgba(245,165,36,0.28); }
+.home-history .session-card > summary:hover {
+  background: rgba(245,165,36,0.055);
+}
 
 /* ---------- Reflection modal ---------- */
 .modal-wrap {

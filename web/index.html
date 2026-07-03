@@ -25,7 +25,7 @@
     <nav class="stepper" aria-label="Practice progress">
       <button class="step current" id="stepHome" data-step="home"><span class="num">0</span>Home</button>
       <span class="step-divider"></span>
-      <button class="step" id="stepSetup" data-step="setup"><span class="num">1</span>Setup</button>
+      <button class="step" id="stepSetup" data-step="setup"><span class="num">1</span>Song</button>
       <span class="step-divider"></span>
       <button class="step" id="stepWarmups" data-step="warmups"><span class="num">2</span>Warmups</button>
       <span class="step-divider"></span>
@@ -34,7 +34,7 @@
     <div class="end">
       <button class="primary on-sing-only" id="endSessionBtn">Finish &amp; reflect</button>
       <button class="ghost" id="historyBtn">&#9719; History</button>
-      <button class="ghost" id="editSetup">&#9881; Setup</button>
+      <button class="ghost" id="editSetup">&#9881; Song</button>
     </div>
   </header>
 
@@ -43,8 +43,8 @@
     <section id="stageHome" class="stage active">
       <div class="stage-head">
         <div class="stage-eyebrow">Home</div>
-        <h1 class="stage-title">Your singing practice</h1>
-        <p class="stage-sub">Start a fresh session for your focus song or review previous sessions.</p>
+        <h1 class="stage-title">Practice home</h1>
+        <p class="stage-sub">Review past sessions, then start today’s run with your saved song.</p>
       </div>
       <div class="home-wrap">
         <section class="home-focus card">
@@ -54,7 +54,7 @@
             <p id="homeFocusMeta" class="muted">Set up a song to begin.</p>
           </div>
           <div class="home-actions">
-            <button id="homeStartTop" class="primary">Start new session</button>
+            <button id="homeStartTop" class="ghost">Review song</button>
             <button id="homeChangeSong" class="ghost">Change song</button>
           </div>
         </section>
@@ -73,18 +73,18 @@
     <!-- STAGE 1: SETUP -->
     <section id="stageSetup" class="stage">
       <div class="stage-head">
-        <div class="stage-eyebrow">Step One</div>
-        <h1 class="stage-title">Set up your session</h1>
-        <p class="stage-sub">Paste your links and lyrics once. Everything is saved in this browser.</p>
+        <div class="stage-eyebrow">Review</div>
+        <h1 class="stage-title">Review your song</h1>
+        <p class="stage-sub">Your saved song is ready. Make changes only if you need to.</p>
       </div>
       <div class="card setup-card">
         <div class="song-search">
-          <label for="songSearch">&#9889; Quick start &mdash; search a song</label>
+          <label for="songSearch">&#9889; Find a different song</label>
           <div class="search-row">
             <input id="songSearch" placeholder="e.g. Adele - Hello" autocomplete="off" />
             <button id="searchBtn" class="primary">Search</button>
           </div>
-          <p id="searchStatus" class="search-status muted">Type a song and we'll find the videos and lyrics for you.</p>
+          <p id="searchStatus" class="search-status muted">Search only when you want to switch your focus song.</p>
         </div>
         <div class="manual-setup" id="manualSetup">
         <button type="button" class="manual-toggle" id="manualToggle" aria-expanded="false">
@@ -131,7 +131,7 @@
         </div>
         <div class="setup-actions">
           <button id="saveSetup" class="ghost">Save</button>
-          <button id="startSession" class="primary">Start Session &rarr;</button>
+          <button id="startSession" class="primary">Continue to warmups &rarr;</button>
         </div>
       </div>
     </section>

@@ -150,12 +150,17 @@ async function main() {
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-setup-v1") || "{}"));
   check("setup persisted to localStorage", persisted.songTitle && persisted.songTitle.includes("Test Song"));
 
-  // --- Start from Home -> warmups ---
-  console.log("Home → New Session → Warmups");
+  // --- Start from Home -> review setup -> warmups ---
+  console.log("Home → Review Song → Warmups");
   await page.fill("#warmupLinks", "https://www.youtube.com/watch?v=ddddddddddd\nhttps://www.youtube.com/watch?v=eeeeeeeeeee");
   await page.click('.step[data-step="home"]');
   check("saved song appears on home", (await page.textContent("#homeFocusTitle")).includes("Test Song"));
-  await page.click("#homeStartTop");
+  check("top song action is review", (await page.textContent("#homeStartTop")).includes("Review song"));
+  await page.click("#homeStartBottom");
+  check("home start opens prefilled setup", await page.isVisible("#stageSetup.active"));
+  check("prefilled setup keeps song title", (await page.inputValue("#songTitle")).includes("Test Song"));
+  check("setup page is review copy", (await page.textContent("#stageSetup .stage-title")).includes("Review your song"));
+  await page.click("#startSession");
   check("warmups stage active after start", await page.isVisible("#stageWarmups.active"));
   check("warmup dots match link count", (await page.locator("#warmupDots .wd").count()) === 2);
   check("prev disabled at first warmup", await page.isDisabled("#prevWarmup"));

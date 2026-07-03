@@ -71,14 +71,15 @@ await ctx.renderHome();
 ok("renders saved focus song", document.getElementById("homeFocusTitle").textContent.includes("My Focus Song"));
 ok("previous session listed", document.querySelectorAll("#homeSessionList .session-card").length === 1);
 ok("previous session shows reflection", document.querySelector("#homeSessionList .session-card").textContent.includes("steady breath"));
+ok("focus top action reviews song", document.getElementById("homeStartTop").textContent === "Review song");
 
-document.getElementById("homeStartTop").click();
+document.getElementById("homeStartBottom").click();
 await new Promise((r) => setTimeout(r, 0));
-ok("start saves setup", saveCalls === 1);
-ok("start creates fresh session", newSessionCalls === 1);
-ok("start moves to warmups", store.get().step === "warmups");
-ok("start resets warmup index", store.get().warmupIndex === 0);
-ok("start refreshes takes", renderTakesCalls === 1);
+ok("start keeps setup unchanged", saveCalls === 0);
+ok("start does not create session yet", newSessionCalls === 0);
+ok("start moves to setup review", store.get().step === "setup");
+ok("start does not reset warmup index yet", store.get().warmupIndex === 2);
+ok("start does not refresh takes yet", renderTakesCalls === 0);
 
 document.getElementById("homeChangeSong").click();
 ok("change song moves to setup", store.get().step === "setup");

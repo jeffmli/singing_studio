@@ -69,18 +69,33 @@ main { position: relative; z-index: 1; }
 .stage-sub { color: var(--muted-text); margin-top: 12px; font-size: 15.5px; }
 
 /* ---------- Home dashboard ---------- */
+#stageHome {
+  width: min(1060px, 92vw);
+  padding-top: 28px;
+}
+#stageHome .stage-head {
+  text-align: left;
+  margin-bottom: 18px;
+  display: block;
+}
+#stageHome .stage-title {
+  font-size: clamp(34px, 4vw, 48px);
+}
+#stageHome .stage-sub {
+  max-width: 560px;
+}
 .home-wrap {
   width: min(1040px, 100%);
-  margin: 0 auto 80px;
+  margin: 0 auto 70px;
   display: grid;
-  gap: 28px;
+  gap: 22px;
 }
 .home-focus {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
   gap: 24px;
-  padding: 26px;
+  padding: 22px 24px;
   position: relative;
   overflow: hidden;
 }
@@ -103,9 +118,9 @@ main { position: relative; z-index: 1; }
   text-transform: uppercase;
 }
 .home-focus h2 {
-  margin: 4px 0 8px;
+  margin: 4px 0 6px;
   font-family: var(--display);
-  font-size: clamp(28px, 4vw, 46px);
+  font-size: clamp(28px, 3.4vw, 42px);
   font-weight: 500;
   line-height: 1.03;
 }
@@ -120,7 +135,7 @@ main { position: relative; z-index: 1; }
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 .home-section-head h2 {
   font-family: var(--display);
@@ -129,12 +144,15 @@ main { position: relative; z-index: 1; }
 }
 #homeSessionList {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 .home-bottom-action {
   display: flex;
   justify-content: center;
-  margin-top: 22px;
+  margin-top: 20px;
+}
+.home-bottom-action .primary {
+  min-width: 220px;
 }
 
 /* ---------- Card ---------- */
@@ -155,6 +173,7 @@ body.on-sing .on-sing-only { display: inline-flex; }
 }
 
 @media (max-width: 760px) {
+  #stageHome .stage-head { display: block; }
   .home-focus { grid-template-columns: 1fr; align-items: stretch; }
   .home-actions { justify-content: stretch; }
   .home-actions > button { flex: 1; }
