@@ -112,6 +112,14 @@ class Handler(SimpleHTTPRequestHandler):
                 os.remove(take_path)
 
     # ---- helpers ----
+    def end_headers(self):
+        # Static files must revalidate every load: without this, browsers
+        # heuristically cache JS modules and a code update can mix old modules
+        # with new HTML, silently breaking event bindings. (APIs set no-store.)
+        if not self.path.startswith("/api"):
+            self.send_header("Cache-Control", "no-cache")
+        super().end_headers()
+
     @staticmethod
     def _param(parsed, name):
         return (urllib.parse.parse_qs(parsed.query).get(name) or [""])[0].strip()
