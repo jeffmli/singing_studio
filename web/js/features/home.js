@@ -15,7 +15,9 @@ export function initHome(store, ctx) {
   }
 
   function hasFocus(setup) {
-    return Boolean(setup.songTitle || setup.originalUrl || setup.instrumentalUrl || setup.lyricVideoUrl);
+    const title = String(setup.songTitle || "").trim();
+    const hasRealTitle = title && title !== "Practice Song";
+    return Boolean(hasRealTitle || setup.originalUrl || setup.instrumentalUrl || setup.lyricVideoUrl);
   }
 
   function starsMarkup(rating) {
