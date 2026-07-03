@@ -2,7 +2,7 @@
 // Initial state (serializable UI/domain only) + pure reducers. DOM nodes,
 // MediaRecorder, streams, timers, and RAF handles are module-local, NOT here.
 export const initialState = {
-  step: "setup",
+  step: "home",
   activeTab: "original",
   warmupIndex: 0,
   micDeviceId: "",

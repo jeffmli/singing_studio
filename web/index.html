@@ -23,7 +23,9 @@
       <span class="tag">self-guided practice</span>
     </div>
     <nav class="stepper" aria-label="Practice progress">
-      <button class="step current" id="stepSetup" data-step="setup"><span class="num">1</span>Setup</button>
+      <button class="step current" id="stepHome" data-step="home"><span class="num">0</span>Home</button>
+      <span class="step-divider"></span>
+      <button class="step" id="stepSetup" data-step="setup"><span class="num">1</span>Setup</button>
       <span class="step-divider"></span>
       <button class="step" id="stepWarmups" data-step="warmups"><span class="num">2</span>Warmups</button>
       <span class="step-divider"></span>
@@ -37,8 +39,39 @@
   </header>
 
   <main>
+    <!-- HOME -->
+    <section id="stageHome" class="stage active">
+      <div class="stage-head">
+        <div class="stage-eyebrow">Home</div>
+        <h1 class="stage-title">Your singing practice</h1>
+        <p class="stage-sub">Start a fresh session for your focus song or review previous sessions.</p>
+      </div>
+      <div class="home-wrap">
+        <section class="home-focus card">
+          <div>
+            <p class="eyebrow">Current focus</p>
+            <h2 id="homeFocusTitle">Choose a song</h2>
+            <p id="homeFocusMeta" class="muted">Set up a song to begin.</p>
+          </div>
+          <div class="home-actions">
+            <button id="homeStartTop" class="primary">Start new session</button>
+            <button id="homeChangeSong" class="ghost">Change song</button>
+          </div>
+        </section>
+        <section class="home-history">
+          <div class="home-section-head">
+            <h2>Previous sessions</h2>
+          </div>
+          <div id="homeSessionList"></div>
+          <div class="home-bottom-action">
+            <button id="homeStartBottom" class="primary">Start new session</button>
+          </div>
+        </section>
+      </div>
+    </section>
+
     <!-- STAGE 1: SETUP -->
-    <section id="stageSetup" class="stage active">
+    <section id="stageSetup" class="stage">
       <div class="stage-head">
         <div class="stage-eyebrow">Step One</div>
         <h1 class="stage-title">Set up your session</h1>

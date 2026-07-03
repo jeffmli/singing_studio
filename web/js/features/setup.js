@@ -73,19 +73,20 @@ export function initSetup(store, ctx) {
 
   function renderStages() {
     const step = store.get().step;
-    const map = { setup: "stageSetup", warmups: "stageWarmups", song: "stageSong" };
+    const map = { home: "stageHome", setup: "stageSetup", warmups: "stageWarmups", song: "stageSong" };
     for (const [key, id] of Object.entries(map)) {
       $(id).classList.toggle("active", step === key);
     }
     // Stepper state
-    const order = ["setup", "warmups", "song"];
+    const order = ["home", "setup", "warmups", "song"];
     const current = order.indexOf(step);
-    [["stepSetup", 0], ["stepWarmups", 1], ["stepSong", 2]].forEach(([id, idx]) => {
+    [["stepHome", 0], ["stepSetup", 1], ["stepWarmups", 2], ["stepSong", 3]].forEach(([id, idx]) => {
       const el = $(id);
       el.classList.toggle("current", idx === current);
       el.classList.toggle("done", idx < current);
     });
     // Body mode for transport bar visibility
+    document.body.classList.toggle("on-home", step === "home");
     document.body.classList.toggle("on-setup", step === "setup");
     document.body.classList.toggle("on-warmups", step === "warmups");
     document.body.classList.toggle("on-sing", step === "song");

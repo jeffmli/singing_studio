@@ -3,10 +3,12 @@ import { JSDOM } from "jsdom";
 
 const dom = new JSDOM(`<!doctype html><html><body>
   <nav>
+    <button class="step" id="stepHome" data-step="home"></button>
     <button class="step" id="stepSetup" data-step="setup"></button>
     <button class="step" id="stepWarmups" data-step="warmups"></button>
     <button class="step" id="stepSong" data-step="song"></button>
   </nav>
+  <section id="stageHome"></section>
   <section id="stageSetup"></section>
   <section id="stageWarmups"></section>
   <section id="stageSong"></section>
@@ -36,6 +38,8 @@ const ctx = {
 };
 initSetup(store, ctx);
 
+ok("home stage active on load", document.getElementById("stageHome").classList.contains("active"));
+ok("home step is current", document.getElementById("stepHome").classList.contains("current"));
 ok("loadSetup seeds fallback title", document.getElementById("songTitle").value === "Practice Song");
 
 document.getElementById("songTitle").value = "My Test Song";
@@ -51,6 +55,9 @@ ok("stage class follows step", document.getElementById("stageWarmups").classList
 
 document.getElementById("editSetup").click();
 ok("edit setup returns to setup step", store.get().step === "setup");
+
+document.getElementById("stepHome").click();
+ok("home stepper returns home", store.get().step === "home");
 
 ok("parseYouTubeId handles watch urls", parseYouTubeId("https://www.youtube.com/watch?v=dQw4w9WgXcQ") === "dQw4w9WgXcQ");
 ok("parseYouTubeId handles youtu.be", parseYouTubeId("https://youtu.be/dQw4w9WgXcQ") === "dQw4w9WgXcQ");
