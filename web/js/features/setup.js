@@ -1,9 +1,12 @@
 // web/js/features/setup.js
 // Setup form: field persistence to localStorage, stage/stepper rendering,
-// tab + step navigation, manual-section toggle. Owns "singing-practice-setup-v1".
+// tab + step navigation, manual-section toggle, recent-songs library.
+// Owns "singing-practice-setup-v1" and "singing-song-library-v1".
 import { byId as $ } from "../core/dom.js";
+import { upsertSong } from "../lib/song-library.js";
 
 const setupKey = "singing-practice-setup-v1";
+const libraryKey = "singing-song-library-v1";
 const fields = ["songTitle", "warmupLinks", "originalUrl", "instrumentalUrl", "lyricVideoUrl", "lyricsInput", "phraseFocus"];
 
 export function parseYouTubeId(value) {
@@ -67,6 +70,47 @@ export function initSetup(store, ctx) {
     $("phraseFocus").value = saved.phraseFocus || "";
   }
 
+  function readLibrary() {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(libraryKey) || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function applySong(song) {
+    $("songTitle").value = song.songTitle || "";
+    $("originalUrl").value = song.originalUrl || "";
+    $("instrumentalUrl").value = song.instrumentalUrl || "";
+    $("lyricVideoUrl").value = song.lyricVideoUrl || "";
+    $("lyricsInput").value = song.lyrics || "";
+    $("syncedLyricsData").value = song.syncedLyrics || "";
+    if (Array.isArray(song.warmups) && song.warmups.length) {
+      $("warmupLinks").value = song.warmups.join("\n");
+    }
+    saveSetup({ silent: true });
+  }
+
+  function renderRecentSongs() {
+    const library = readLibrary();
+    $("recentSongs").hidden = !library.length;
+    const list = $("recentSongList");
+    list.innerHTML = "";
+    library.forEach((song, index) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "recent-song";
+      btn.dataset.index = String(index);
+      btn.innerHTML = `<span class="rs-title"></span><span class="rs-meta"></span>`;
+      btn.querySelector(".rs-title").textContent = song.songTitle || "Untitled song";
+      btn.querySelector(".rs-meta").textContent = song.savedAt
+        ? new Date(song.savedAt).toLocaleDateString([], { dateStyle: "medium" })
+        : "";
+      list.appendChild(btn);
+    });
+  }
+
   function setStep(step) {
     store.dispatch({ type: "setStep", payload: step });
   }
@@ -97,13 +141,22 @@ export function initSetup(store, ctx) {
     $("manualToggle").setAttribute("aria-expanded", String(open));
   }
 
-  $("saveSetup").addEventListener("click", () => saveSetup());
   $("startSession").addEventListener("click", () => {
     saveSetup({ silent: true });
+    const snapshot = getSetup();
+    delete snapshot.phraseFocus; // session-specific, not part of the song
+    localStorage.setItem(libraryKey, JSON.stringify(upsertSong(readLibrary(), snapshot)));
+    renderRecentSongs();
     ctx.startNewSession?.();
     store.dispatch({ type: "setWarmupIndex", payload: 0 });
     setStep("warmups");
     ctx.renderTakes?.();
+  });
+  $("recentSongList").addEventListener("click", (event) => {
+    const btn = event.target.closest(".recent-song");
+    if (!btn) return;
+    const song = readLibrary()[Number(btn.dataset.index)];
+    if (song) applySong(song);
   });
   $("editSetup").addEventListener("click", () => setStep("setup"));
   for (const btn of document.querySelectorAll(".step[data-step]")) {
@@ -124,7 +177,9 @@ export function initSetup(store, ctx) {
   ctx.getSetup = getSetup;
   ctx.saveSetup = saveSetup;
   ctx.setManualOpen = setManualOpen;
+  ctx.renderRecentSongs = renderRecentSongs;
 
   loadSetup();
+  renderRecentSongs();
   renderStages();
 }

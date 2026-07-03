@@ -51,3 +51,38 @@
   .setup-grid { grid-template-columns: 1fr; }
   .practice-plan .plan-fields { grid-template-columns: 1fr; }
 }
+
+/* ---------- Recent songs ---------- */
+.recent-songs { margin-top: 22px; }
+.recent-songs h3 {
+  font-family: var(--display);
+  font-size: 19px;
+  font-weight: 500;
+}
+.recent-songs .hint { margin: 2px 0 10px; }
+#recentSongList {
+  display: grid;
+  gap: 8px;
+}
+.recent-song {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  padding: 12px 14px;
+  font: inherit;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  color: var(--ink);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.recent-song:hover {
+  border-color: var(--amber);
+  background: rgba(245, 165, 36, 0.07);
+}
+.recent-song .rs-title { font-weight: 600; }
+.recent-song .rs-meta { font-size: 12px; color: var(--muted-text); white-space: nowrap; }

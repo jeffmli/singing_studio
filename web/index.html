@@ -73,18 +73,18 @@
     <!-- STAGE 1: SETUP -->
     <section id="stageSetup" class="stage">
       <div class="stage-head">
-        <div class="stage-eyebrow">Review</div>
-        <h1 class="stage-title">Review your song</h1>
-        <p class="stage-sub">Your saved song is ready. Make changes only if you need to.</p>
+        <div class="stage-eyebrow">Step One</div>
+        <h1 class="stage-title">Pick your song</h1>
+        <p class="stage-sub">Search once — videos and lyrics fill in automatically.</p>
       </div>
       <div class="card setup-card">
         <div class="song-search">
-          <label for="songSearch">&#9889; Find a different song</label>
+          <label for="songSearch">&#9889; What are you singing today?</label>
           <div class="search-row">
             <input id="songSearch" placeholder="e.g. Adele - Hello" autocomplete="off" />
             <button id="searchBtn" class="primary">Search</button>
           </div>
-          <p id="searchStatus" class="search-status muted">Search only when you want to switch your focus song.</p>
+          <p id="searchStatus" class="search-status muted">Type a song name and hit Search.</p>
         </div>
         <div class="manual-setup" id="manualSetup">
         <button type="button" class="manual-toggle" id="manualToggle" aria-expanded="false">
@@ -129,9 +129,13 @@
         </div>
         </div></div>
         </div>
+        <section class="recent-songs" id="recentSongs" hidden>
+          <h3>Recent songs</h3>
+          <p class="hint">One click loads everything — videos, lyrics, warmups.</p>
+          <div id="recentSongList"></div>
+        </section>
         <div class="setup-actions">
-          <button id="saveSetup" class="ghost">Save</button>
-          <button id="startSession" class="primary">Continue to warmups &rarr;</button>
+          <button id="startSession" class="primary">Save &amp; start warmups &rarr;</button>
         </div>
       </div>
     </section>
