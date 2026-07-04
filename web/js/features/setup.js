@@ -59,24 +59,20 @@ export function initSetup(store, ctx) {
   }
 
   function renderWarmupLibrary() {
-    const list = $("warmupLibrary");
-    if (!list) return;
-    list.innerHTML = "";
+    const select = $("warmupLibrarySelect");
+    if (!select) return;
     const selected = new Set(readWarmupQueue());
+    const previousValue = selected.has(select.value) ? "" : select.value;
+    select.innerHTML = "<option value=\"\">Add a warm-up from the library...</option>";
     for (const item of WARMUP_LIBRARY) {
       const isSelected = selected.has(item.url);
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = `warmup-library-item${isSelected ? " selected" : ""}`;
-      button.dataset.addWarmup = item.url;
-      button.disabled = isSelected;
-      button.setAttribute("aria-pressed", String(isSelected));
-      button.innerHTML = `
-        <span class="wl-row"><span class="wl-title">${escapeHtml(item.title)}</span>${isSelected ? "<span class=\"wl-state\">Queued</span>" : ""}</span>
-        <span class="wl-meta">${escapeHtml(item.type)} · ${escapeHtml(item.note || "")}</span>
-      `;
-      list.appendChild(button);
+      const option = document.createElement("option");
+      option.value = item.url;
+      option.disabled = isSelected;
+      option.textContent = `${item.title} - ${item.type}${isSelected ? " (queued)" : ""}`;
+      select.appendChild(option);
     }
+    select.value = previousValue;
   }
 
   function renderWarmupQueue() {
@@ -253,10 +249,11 @@ export function initSetup(store, ctx) {
   $("manualToggle").addEventListener("click", () => {
     setManualOpen(!$("manualSetup").classList.contains("open"));
   });
-  $("warmupLibrary")?.addEventListener("click", (event) => {
-    const button = event.target.closest("[data-add-warmup]");
-    if (!button) return;
-    writeWarmupQueue([...readWarmupQueue(), button.dataset.addWarmup]);
+  $("warmupLibrarySelect")?.addEventListener("change", (event) => {
+    const url = event.target.value;
+    if (!url) return;
+    writeWarmupQueue([...readWarmupQueue(), url]);
+    event.target.value = "";
   });
   $("warmupQueue")?.addEventListener("click", (event) => {
     const row = event.target.closest("[data-warmup-url]");

@@ -46,6 +46,7 @@ ok("duration formatter handles minutes and seconds", ctx.formatSessionDuration(1
 
 const realDateNow = Date.now;
 Date.now = () => 181000;
+store.dispatch({ type: "setStep", payload: "song" });
 document.getElementById("endSessionBtn").click();
 await new Promise((r) => setTimeout(r, 50));
 ok("reflect modal opens", document.body.classList.contains("reflect-open"));
@@ -62,6 +63,7 @@ document.getElementById("reflectSave").click();
 await new Promise((r) => setTimeout(r, 50));
 Date.now = realDateNow;
 ok("reflect modal closes after save", !document.body.classList.contains("reflect-open"));
+ok("finish and reflect returns home", store.get().step === "home");
 ok("new session started", store.get().sessionId !== firstSession);
 ok("takes re-rendered", renderTakesCalls === 1);
 ok("toast shown", document.getElementById("toast").classList.contains("show"));

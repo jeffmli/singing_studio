@@ -15,22 +15,38 @@ const dom = new JSDOM(`<!doctype html><html><body>
 globalThis.document = dom.window.document;
 globalThis.window = dom.window;
 
+const createdOscillators = [];
+const gainTargets = [];
+const stoppedOscillators = [];
+
 class FakeOscillator {
   constructor() {
     this.frequency = { value: 0 };
+    this.detune = { value: 0 };
     this.type = "";
+    createdOscillators.push(this);
   }
   connect() {}
   start() {}
-  stop() {}
+  stop(when) { stoppedOscillators.push({ oscillator: this, when }); }
 }
 class FakeGain {
   constructor() {
     this.gain = {
       value: 0,
-      setValueAtTime: () => {},
-      linearRampToValueAtTime: () => {},
+      setValueAtTime: (value) => { gainTargets.push(value); },
+      linearRampToValueAtTime: (value) => { gainTargets.push(value); },
+      exponentialRampToValueAtTime: (value) => { gainTargets.push(value); },
+      cancelScheduledValues: () => {},
     };
+  }
+  connect() {}
+}
+class FakeFilter {
+  constructor() {
+    this.type = "";
+    this.frequency = { value: 0 };
+    this.Q = { value: 0 };
   }
   connect() {}
 }
@@ -41,6 +57,8 @@ class FakeAudioContext {
   }
   createOscillator() { return new FakeOscillator(); }
   createGain() { return new FakeGain(); }
+  createBiquadFilter() { return new FakeFilter(); }
+  createDynamicsCompressor() { return { connect: () => {} }; }
   resume() { return Promise.resolve(); }
 }
 globalThis.AudioContext = FakeAudioContext;
@@ -66,9 +84,16 @@ ok("first key is C2", document.querySelector("#pianoKeys [data-midi]").textConte
 ok("last key is C6", [...document.querySelectorAll("#pianoKeys [data-midi]")].at(-1).textContent.includes("C6"));
 ok("black keys are marked", document.querySelectorAll("#pianoKeys .black").length > 0);
 
-document.querySelector('#pianoKeys [data-midi="60"]').click();
-ok("clicking C4 updates active note", document.getElementById("pianoActiveNote").textContent === "C4");
-ok("clicking C4 updates target note", document.getElementById("pianoTargetNote").textContent === "C4");
+const c4Key = document.querySelector('#pianoKeys [data-midi="60"]');
+c4Key.dispatchEvent(new dom.window.Event("pointerdown", { bubbles: true }));
+await new Promise((resolve) => setTimeout(resolve, 0));
+ok("pressing C4 updates active note", document.getElementById("pianoActiveNote").textContent === "C4");
+ok("pressing C4 updates target note", document.getElementById("pianoTargetNote").textContent === "C4");
+ok("piano note uses layered oscillators", createdOscillators.length >= 3);
+ok("piano note is louder than old tone", Math.max(...gainTargets) >= 0.28);
+ok("holding C4 keeps note running", stoppedOscillators.length === 0);
+c4Key.dispatchEvent(new dom.window.Event("pointerup", { bubbles: true }));
+ok("releasing C4 stops held note", stoppedOscillators.length >= 3);
 
 ok("midiToHz maps A4", Math.round(midiToHz(69)) === 440);
 ok("note name maps black key", pianoNoteName(61) === "C#4");

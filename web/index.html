@@ -93,11 +93,14 @@
           <div class="section-heading">
             <div>
               <h3>Pick warm-ups</h3>
-              <p class="hint">Defaults are ready. Add, remove, or paste YouTube warm-ups before you start.</p>
+              <p class="hint">Defaults are ready. Choose another warm-up or paste a YouTube link before you start.</p>
             </div>
           </div>
           <div class="warmup-picker">
-            <div class="warmup-library" id="warmupLibrary" aria-label="Warm-up library"></div>
+            <div class="warmup-library" id="warmupLibrary">
+              <label class="sr-only" for="warmupLibrarySelect">Add a warm-up from the library</label>
+              <select id="warmupLibrarySelect" aria-label="Add a warm-up from the library"></select>
+            </div>
             <div class="warmup-queue-wrap">
               <div class="warmup-queue-head">
                 <span>Your warm-up queue</span>

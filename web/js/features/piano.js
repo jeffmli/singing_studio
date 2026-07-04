@@ -21,6 +21,7 @@ export function classifyPitchMatch(targetMidi, userMidi, toleranceCents = MATCH_
 
 export function initPiano(store, ctx) {
   let audioContext = null;
+  let heldNote = null;
   let targetMidi = 60;
   let stream = null;
   let matchAudioContext = null;
@@ -60,7 +61,7 @@ export function initPiano(store, ctx) {
     return audioContext;
   }
 
-  async function playNote(midi) {
+  function setSelectedNote(midi) {
     targetMidi = Number(midi);
     const label = pianoNoteName(targetMidi);
     if ($("pianoActiveNote")) $("pianoActiveNote").textContent = label;
@@ -68,21 +69,77 @@ export function initPiano(store, ctx) {
     for (const key of document.querySelectorAll("#pianoKeys [data-midi]")) {
       key.classList.toggle("active", Number(key.dataset.midi) === targetMidi);
     }
+    return label;
+  }
 
+  function releaseHeldNote() {
+    if (!heldNote) return;
+    const { audioContext: ac, gain, oscillators } = heldNote;
+    const now = ac.currentTime;
+    gain.gain.cancelScheduledValues?.(now);
+    gain.gain.setValueAtTime(Math.max(gain.gain.value || 0.0001, 0.0001), now);
+    gain.gain.exponentialRampToValueAtTime?.(0.0001, now + 0.16);
+    gain.gain.linearRampToValueAtTime?.(0.0001, now + 0.18);
+    for (const osc of oscillators) osc.stop(now + 0.2);
+    heldNote = null;
+    for (const key of document.querySelectorAll("#pianoKeys [data-midi]")) key.classList.remove("active");
+  }
+
+  async function startPianoNote(midi) {
+    const label = setSelectedNote(midi);
     const ac = await ensureAudioContext();
     if (!ac) return;
-    const osc = ac.createOscillator();
+    if (heldNote?.midi === Number(midi)) return;
+    releaseHeldNote();
+
+    const now = ac.currentTime;
+    const hz = midiToHz(targetMidi);
     const gain = ac.createGain();
-    osc.type = "triangle";
-    osc.frequency.value = midiToHz(targetMidi);
-    gain.gain.setValueAtTime(0.0001, ac.currentTime);
-    gain.gain.linearRampToValueAtTime(0.18, ac.currentTime + 0.02);
-    gain.gain.linearRampToValueAtTime(0.0001, ac.currentTime + 0.8);
-    osc.connect(gain);
-    gain.connect(ac.destination);
-    osc.start(ac.currentTime);
-    osc.stop(ac.currentTime + 0.85);
+    const filter = ac.createBiquadFilter?.();
+    const compressor = ac.createDynamicsCompressor?.();
+    const destination = compressor || ac.destination;
+    const oscillators = [];
+
+    if (filter) {
+      filter.type = "lowpass";
+      filter.frequency.value = Math.min(5600, Math.max(2200, hz * 12));
+      filter.Q.value = 0.7;
+      filter.connect(destination);
+    }
+    if (compressor) compressor.connect(ac.destination);
+
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.linearRampToValueAtTime(0.34, now + 0.012);
+    gain.gain.linearRampToValueAtTime(0.26, now + 0.18);
+    gain.connect(filter || destination);
+
+    const layers = [
+      { type: "triangle", ratio: 1, level: 0.9, detune: 0 },
+      { type: "sine", ratio: 2, level: 0.28, detune: 2 },
+      { type: "sine", ratio: 3, level: 0.12, detune: -4 },
+    ];
+    for (const layer of layers) {
+      const osc = ac.createOscillator();
+      const layerGain = ac.createGain();
+      osc.type = layer.type;
+      osc.frequency.value = hz * layer.ratio;
+      if (osc.detune) osc.detune.value = layer.detune;
+      layerGain.gain.setValueAtTime(layer.level, now);
+      osc.connect(layerGain);
+      layerGain.connect(gain);
+      osc.start(now);
+      oscillators.push(osc);
+    }
+
+    heldNote = { midi: Number(midi), audioContext: ac, gain, oscillators };
     setStatus(`${label} reference tone`);
+  }
+
+  async function playNote(midi) {
+    await startPianoNote(midi);
+    setTimeout(() => {
+      if (heldNote?.midi === Number(midi)) releaseHeldNote();
+    }, 900);
   }
 
   function renderKeyboard() {
@@ -160,10 +217,26 @@ export function initPiano(store, ctx) {
   renderKeyboard();
   if ($("pianoTargetNote")) $("pianoTargetNote").textContent = pianoNoteName(targetMidi);
   if ($("pianoActiveNote")) $("pianoActiveNote").textContent = "--";
-  $("pianoKeys")?.addEventListener("click", (event) => {
+  $("pianoKeys")?.addEventListener("pointerdown", (event) => {
     const key = event.target.closest("[data-midi]");
     if (!key) return;
-    playNote(Number(key.dataset.midi));
+    event.preventDefault();
+    key.setPointerCapture?.(event.pointerId);
+    startPianoNote(Number(key.dataset.midi));
+  });
+  $("pianoKeys")?.addEventListener("pointerup", releaseHeldNote);
+  $("pianoKeys")?.addEventListener("pointercancel", releaseHeldNote);
+  $("pianoKeys")?.addEventListener("pointerleave", releaseHeldNote);
+  $("pianoKeys")?.addEventListener("keydown", (event) => {
+    const key = event.target.closest("[data-midi]");
+    if (!key || event.repeat || ![" ", "Enter"].includes(event.key)) return;
+    event.preventDefault();
+    startPianoNote(Number(key.dataset.midi));
+  });
+  $("pianoKeys")?.addEventListener("keyup", (event) => {
+    if (![" ", "Enter"].includes(event.key)) return;
+    event.preventDefault();
+    releaseHeldNote();
   });
   $("pianoStartMatch")?.addEventListener("click", startMatch);
   $("pianoStopMatch")?.addEventListener("click", stopMatch);
@@ -173,5 +246,7 @@ export function initPiano(store, ctx) {
   });
 
   ctx.playPianoNote = playNote;
+  ctx.startPianoNote = startPianoNote;
+  ctx.releasePianoNote = releaseHeldNote;
   ctx.stopPianoMatch = stopMatch;
 }

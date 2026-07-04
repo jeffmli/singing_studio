@@ -180,6 +180,7 @@ export function initHistory(store, ctx) {
     startNewSession();   // fresh session for next time
     closeReflect();
     await ctx.renderTakes();
+    store.dispatch({ type: "setStep", payload: "home" });
     showToast("Session saved to your history ✓");
   }
 

@@ -143,8 +143,12 @@ async function main() {
   check("lyric video url filled", (await page.inputValue("#lyricVideoUrl")).includes("ccccccccccc"));
   check("lyrics filled", (await page.inputValue("#lyricsInput")).includes("la la la"));
   check("manual fields auto-expand after search", await page.evaluate(() => document.getElementById("manualSetup").classList.contains("open")));
-  check("warmup picker library visible", (await page.locator("#warmupLibrary [data-add-warmup]").count()) >= 6);
+  check("warmup picker dropdown visible", await page.isVisible("#warmupLibrarySelect"));
+  check("warmup picker dropdown has library options", (await page.locator("#warmupLibrarySelect option[value]").count()) >= 6);
   check("fallback warmup queue visible", (await page.locator("#warmupQueue [data-warmup-url]").count()) === 2);
+  const dropdownWarmupUrl = await page.locator("#warmupLibrarySelect option:not([disabled])").nth(1).getAttribute("value");
+  await page.selectOption("#warmupLibrarySelect", dropdownWarmupUrl);
+  check("warmup dropdown appends selected item", (await page.locator("#warmupQueue [data-warmup-url]").count()) === 3);
 
   // --- Manual section toggle ---
   console.log("Manual section toggle");
@@ -165,11 +169,11 @@ async function main() {
   const persisted = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-setup-v1") || "{}"));
   check("setup persisted on start", Boolean(persisted.songTitle && persisted.songTitle.includes("Test Song")));
   check("practice goal persisted on start", persisted.practiceGoal === "Record a clean chorus take");
-  check("warmup picker persisted queue", persisted.warmups.length === 3 && persisted.warmups.includes("https://www.youtube.com/watch?v=ddddddddddd"));
+  check("warmup picker persisted queue", persisted.warmups.length === 4 && persisted.warmups.includes("https://www.youtube.com/watch?v=ddddddddddd"));
   const library = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-song-library-v1") || "[]"));
   check("song saved to library on start", library.length === 1 && library[0].songTitle.includes("Test Song"));
   check("song library saves practice goal", library[0].practiceGoal === "Record a clean chorus take");
-  check("warmup dots match link count", (await page.locator("#warmupDots .wd").count()) === 3);
+  check("warmup dots match link count", (await page.locator("#warmupDots .wd").count()) === 4);
   check("piano practice is available during warmups", await page.isVisible("#stageWarmups .piano-practice summary"));
   await page.click("#stageWarmups .piano-practice summary");
   check("piano keys render during warmups", (await page.locator("#pianoKeys [data-midi]").count()) === 49);
@@ -269,11 +273,11 @@ async function main() {
   await page.fill("#reflectFocus", "the high note in the chorus");
   await page.click("#reflectSave");
   check("reflection modal closes after save", await waitTrue(() => !document.body.classList.contains("reflect-open")));
+  check("finish and reflect returns home", await waitTrue(() => document.getElementById("stageHome").classList.contains("active")));
   check("takes badge resets for new session", await waitTrue(() => document.getElementById("takesCount").textContent === "0"));
 
   // --- Home history ---
   console.log("Home history");
-  await page.click('.step[data-step="home"]');
   await page.waitForSelector("#homeSessionList .session-card", { timeout: 10000 });
   check("saved session appears on home", (await page.locator("#homeSessionList .session-card").count()) >= 1);
   const homeCardText = await page.textContent("#homeSessionList .session-card");

@@ -13,7 +13,7 @@ const dom = new JSDOM(`<!doctype html><html><body>
   <section id="stageWarmups"></section>
   <section id="stageSong"></section>
   <input id="songTitle"><textarea id="warmupLinks"></textarea>
-  <div id="warmupLibrary"></div>
+  <div id="warmupLibrary"><select id="warmupLibrarySelect"></select></div>
   <div id="warmupQueue"></div>
   <input id="warmupCustomUrl"><button id="warmupCustomAdd"></button>
   <input id="originalUrl"><input id="instrumentalUrl"><input id="lyricVideoUrl">
@@ -45,19 +45,22 @@ ok("home stage active on load", document.getElementById("stageHome").classList.c
 ok("home step is current", document.getElementById("stepHome").classList.contains("current"));
 ok("loadSetup seeds fallback title", document.getElementById("songTitle").value === "Practice Song");
 ok("loadSetup seeds fallback goal", document.getElementById("practiceGoal").value === "Improve pitch");
-ok("warmup library renders starter items", document.querySelectorAll("#warmupLibrary [data-add-warmup]").length >= 6);
+ok("warmup library renders starter options", document.querySelectorAll("#warmupLibrarySelect option[value]").length >= 6);
 ok("fallback warmups hydrate queue", document.querySelectorAll("#warmupQueue [data-warmup-url]").length === 2);
-ok("queued default warmups are visibly selected", document.querySelectorAll("#warmupLibrary .warmup-library-item.selected").length === 2);
-ok("queued default warmups expose selected state", [...document.querySelectorAll("#warmupLibrary .warmup-library-item.selected")].every((button) => button.getAttribute("aria-pressed") === "true"));
+ok("queued default warmups are disabled in dropdown", [...document.querySelectorAll("#warmupLibrarySelect option[value]")].filter((option) => option.disabled).length === 2);
+ok("warmup dropdown defaults to prompt option", document.getElementById("warmupLibrarySelect")?.value === "");
 ok("recent songs hidden when library empty", document.getElementById("recentSongs").hidden);
 
-const firstWarmupAdd = [...document.querySelectorAll("#warmupLibrary [data-add-warmup]")].find((button) => !button.disabled);
-firstWarmupAdd?.click();
+const firstWarmupAdd = [...document.querySelectorAll("#warmupLibrarySelect option[value]")].find((option) => option.value && !option.disabled);
+if (document.getElementById("warmupLibrarySelect")) document.getElementById("warmupLibrarySelect").value = firstWarmupAdd?.value || "";
+document.getElementById("warmupLibrarySelect")?.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
 const afterFirstAdd = document.getElementById("warmupLinks").value.split(/\n+/).filter(Boolean);
 ok("library add appends warmup url", afterFirstAdd.length === 3);
-firstWarmupAdd?.click();
+if (document.getElementById("warmupLibrarySelect")) document.getElementById("warmupLibrarySelect").value = firstWarmupAdd?.value || "";
+document.getElementById("warmupLibrarySelect")?.dispatchEvent(new dom.window.Event("change", { bubbles: true }));
 const afterDuplicateAdd = document.getElementById("warmupLinks").value.split(/\n+/).filter(Boolean);
 ok("duplicate library add is ignored", afterDuplicateAdd.length === 3);
+ok("library dropdown resets after adding", document.getElementById("warmupLibrarySelect")?.value === "");
 
 document.getElementById("warmupCustomUrl").value = "https://www.youtube.com/watch?v=fffffffffff";
 document.getElementById("warmupCustomAdd").click();
