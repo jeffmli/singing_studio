@@ -7,6 +7,22 @@ import { writeTake } from "../core/db.js";
 
 export function initRecording(store, ctx) {
   const micKey = "singing-practice-mic-v1";
+  // Once the user picks a mic by hand, stop auto-preferring the fifine so we
+  // don't fight their choice. Session-scoped: resets on reload, where auto
+  // re-resolves from whatever's currently plugged in.
+  let userPickedMic = false;
+
+  // Prefer a plugged-in fifine so the dropdown reads "fifine Microphone" instead
+  // of the ambiguous "Default", falling back to the system default when it's
+  // unplugged. Only resolvable once permission is granted (labels are blank
+  // before that); returns null when there's no fifine or the user chose manually.
+  function autoPreferredMicId(devices) {
+    if (userPickedMic) return null;
+    const fifine = (devices || []).find(
+      (d) => d.kind === "audioinput" && d.deviceId && /fifine/i.test(d.label || "")
+    );
+    return fifine ? fifine.deviceId : null;
+  }
   let mediaRecorder = null;
   let audioChunks = [];
   let audioStream = null;
@@ -95,6 +111,11 @@ export function initRecording(store, ctx) {
     try {
       devices = await navigator.mediaDevices.enumerateDevices();
     } catch { return; }
+    // Auto-select the fifine when it's present and the user hasn't chosen a mic.
+    const auto = autoPreferredMicId(devices);
+    if (auto && store.get().micDeviceId !== auto) {
+      store.dispatch({ type: "setMicDeviceId", payload: auto });
+    }
     const micDeviceId = store.get().micDeviceId;
     const opts = micOptions(devices, micDeviceId);
     sel.innerHTML = "";
@@ -113,6 +134,7 @@ export function initRecording(store, ctx) {
   }
 
   function onMicChange() {
+    userPickedMic = true; // respect the manual choice over the fifine auto-pick
     const micDeviceId = $("micSelect").value || "";
     store.dispatch({ type: "setMicDeviceId", payload: micDeviceId });
     if (micDeviceId) localStorage.setItem(micKey, micDeviceId);
