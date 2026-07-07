@@ -38,6 +38,15 @@ const MOCK_SEARCH = {
   lyrics: "la la la\nsecond line\nthird line",
 };
 
+const MOCK_CHANGED_SEARCH = {
+  query: "changed smoke song",
+  title: "Changed Smoke Song",
+  original: { url: "https://www.youtube.com/watch?v=eeeeeeeeeee", title: "changed orig" },
+  instrumental: { url: "https://www.youtube.com/watch?v=fffffffffff", title: "changed inst" },
+  lyricVideo: { url: "https://www.youtube.com/watch?v=ggggggggggg", title: "changed lyr" },
+  lyrics: "changed line one\nchanged line two",
+};
+
 const MOCK_ANALYSIS = {
   score: 82,
   inTunePct: 82.1,
@@ -69,9 +78,11 @@ async function main() {
   const context = await browser.newContext({ permissions: ["microphone"] });
 
   // Mock the search backend so the test is fast and offline.
-  await context.route("**/api/search**", (route) =>
-    route.fulfill({ contentType: "application/json", body: JSON.stringify(MOCK_SEARCH) })
-  );
+  await context.route("**/api/search**", (route) => {
+    const q = new URL(route.request().url()).searchParams.get("q") || "";
+    const body = q.toLowerCase().includes("changed smoke") ? MOCK_CHANGED_SEARCH : MOCK_SEARCH;
+    route.fulfill({ contentType: "application/json", body: JSON.stringify(body) });
+  });
   // Mock the embed-fallback endpoint with a known replacement video.
   await context.route("**/api/alt**", (route) =>
     route.fulfill({
@@ -239,6 +250,21 @@ async function main() {
   await page.click('.step[data-step="song"]');
   check("stepper jumps to sing", await page.isVisible("#stageSong.active"));
 
+  // --- Change song inside current session ---
+  console.log("Change song inside current session");
+  const sessionBeforeSongChange = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-current-session-v1") || "{}").sessionId);
+  check("change song button visible on sing", await page.isVisible("#changeSongInSession"));
+  await page.click("#changeSongInSession");
+  check("change song opens inline picker", await page.isVisible("#singSongPicker"));
+  check("change song stays on sing", await page.isVisible("#stageSong.active"));
+  await page.fill("#singSongSearch", "changed smoke song");
+  await page.click("#singSongSearchBtn");
+  await page.waitForFunction(() => document.getElementById("songHeading").textContent.includes("Changed Smoke Song"), { timeout: 15000 });
+  check("song change closes inline picker", !(await page.isVisible("#singSongPicker")));
+  check("song heading updates after change", (await page.textContent("#songHeading")).includes("Changed Smoke Song"));
+  const sessionAfterSongChange = await page.evaluate(() => JSON.parse(localStorage.getItem("singing-practice-current-session-v1") || "{}").sessionId);
+  check("song change preserves session id", sessionAfterSongChange === sessionBeforeSongChange);
+
   // --- Record / Stop ---
   console.log("Record / Stop (fake mic)");
   await page.click("#recordBtn");
@@ -281,6 +307,7 @@ async function main() {
   await page.waitForSelector("#homeSessionList .session-card", { timeout: 10000 });
   check("saved session appears on home", (await page.locator("#homeSessionList .session-card").count()) >= 1);
   const homeCardText = await page.textContent("#homeSessionList .session-card");
+  check("home session shows changed song", homeCardText.includes("Changed Smoke Song"));
   check("home session shows reflection note", homeCardText.includes("breath control felt steady"));
   check("home session shows practice goal", homeCardText.includes("Record a clean chorus take"));
   check("home session shows logged duration", /\d+:\d{2}/.test(homeCardText));
@@ -294,10 +321,14 @@ async function main() {
   check("recent songs visible after a session", await page.isVisible("#recentSongs"));
   await page.evaluate(() => { document.getElementById("songTitle").value = ""; });
   await page.click("#recentSongList .recent-song");
-  check("recent song click refills setup", (await page.inputValue("#songTitle")).includes("Test Song"));
+  check("recent song click refills setup", (await page.inputValue("#songTitle")).includes("Changed Smoke Song"));
   check("recent song click refills original url", (await page.inputValue("#originalUrl")).length > 0);
   check("recent song click refills custom goal", (await page.inputValue("#practiceGoal")) === "Record a clean chorus take");
   check("recent song stays highlighted", await page.locator("#recentSongList .recent-song.active").count() === 1);
+  await page.fill("#songSearch", "test song");
+  await page.click("#searchBtn");
+  await page.waitForFunction(() => document.getElementById("searchStatus").classList.contains("ok"), { timeout: 15000 });
+  check("new search clears recent song highlight", await page.locator("#recentSongList .recent-song.active").count() === 0);
 
   // --- History ---
   console.log("History panel");

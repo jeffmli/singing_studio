@@ -193,6 +193,11 @@ export function initSetup(store, ctx) {
     });
   }
 
+  function clearRecentSongSelection() {
+    selectedRecentIndex = -1;
+    renderRecentSongs();
+  }
+
   function setStep(step) {
     store.dispatch({ type: "setStep", payload: step });
   }
@@ -224,12 +229,16 @@ export function initSetup(store, ctx) {
     $("manualToggle").setAttribute("aria-expanded", String(open));
   }
 
-  $("startSession").addEventListener("click", () => {
+  function saveSetupToLibrary() {
     saveSetup({ silent: true });
     const snapshot = getSetup();
     localStorage.setItem(libraryKey, JSON.stringify(upsertSong(readLibrary(), snapshot)));
     selectedRecentIndex = 0;
     renderRecentSongs();
+  }
+
+  $("startSession").addEventListener("click", () => {
+    saveSetupToLibrary();
     ctx.startNewSession?.();
     store.dispatch({ type: "setWarmupIndex", payload: 0 });
     setStep("warmups");
@@ -241,8 +250,12 @@ export function initSetup(store, ctx) {
     const song = readLibrary()[Number(btn.dataset.index)];
     if (song) applySong(song, Number(btn.dataset.index));
   });
-  $("editSetup").addEventListener("click", () => setStep("setup"));
-  $("homeStartBottom")?.addEventListener("click", () => setStep("setup"));
+  $("editSetup").addEventListener("click", () => {
+    setStep("setup");
+  });
+  $("homeStartBottom")?.addEventListener("click", () => {
+    setStep("setup");
+  });
   for (const btn of document.querySelectorAll(".step[data-step]")) {
     btn.addEventListener("click", () => setStep(btn.dataset.step));
   }
@@ -293,7 +306,9 @@ export function initSetup(store, ctx) {
 
   ctx.getSetup = getSetup;
   ctx.saveSetup = saveSetup;
+  ctx.saveSetupToLibrary = saveSetupToLibrary;
   ctx.setManualOpen = setManualOpen;
+  ctx.clearRecentSongSelection = clearRecentSongSelection;
   ctx.renderRecentSongs = renderRecentSongs;
   ctx.renderWarmupQueue = renderWarmupQueue;
 

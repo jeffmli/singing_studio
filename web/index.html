@@ -228,12 +228,26 @@
     <section id="stageSong" class="stage">
       <div class="sing-grid">
         <div class="sing-top">
-          <div class="song-name" id="songHeading">Song Practice</div>
+          <div class="sing-title-actions">
+            <div class="song-name" id="songHeading">Song Practice</div>
+            <button type="button" class="ghost sing-change-song" id="changeSongInSession">Change song</button>
+          </div>
           <div class="segmented" role="tablist" aria-label="Source">
             <button class="active" data-tab="original">Original</button>
             <button data-tab="instrumental">Instrumental</button>
             <button data-tab="lyricVideo">Lyric Video</button>
             <button data-tab="lyrics">Lyrics</button>
+          </div>
+        </div>
+        <div class="sing-song-picker hidden" id="singSongPicker" aria-label="Change song in current session">
+          <div class="sing-song-picker-main">
+            <label for="singSongSearch">Pick a different song</label>
+            <div class="search-row">
+              <input id="singSongSearch" placeholder="e.g. Chappell Roan - Pink Pony Club" autocomplete="off" />
+              <button id="singSongSearchBtn" class="primary" type="button">Search &amp; use</button>
+              <button id="singSongPickerClose" class="ghost" type="button">Cancel</button>
+            </div>
+            <p id="singSongSearchStatus" class="search-status muted">Search here to swap songs without leaving this session.</p>
           </div>
         </div>
         <div class="player-shell">

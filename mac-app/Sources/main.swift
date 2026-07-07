@@ -15,12 +15,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     var window: NSWindow!
     var webView: WKWebView!
     var serverProcess: Process?
+    var serverMonitor: DispatchSourceTimer?
+    var showingErrorPage = false
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         buildMenu()
         buildWindow()
         startServerIfNeeded()
         waitForServerThenLoad()
+        startServerMonitor()
         NSApp.activate(ignoringOtherApps: true)
     }
 
@@ -29,6 +32,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        // Stop supervising first so the monitor can't respawn the server while
+        // we're quitting.
+        serverMonitor?.cancel()
+        serverMonitor = nil
         // Only stop the server if we started it ourselves.
         serverProcess?.terminate()
     }
@@ -87,6 +94,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
     // MARK: server lifecycle
     func startServerIfNeeded() {
         if serverIsUp() { return }
+        spawnServer()
+    }
+
+    func spawnServer() {
         guard let appDir = Bundle.main.resourceURL?.appendingPathComponent("app") else { return }
         let server = appDir.appendingPathComponent("server.py")
         guard FileManager.default.fileExists(atPath: server.path),
@@ -103,15 +114,43 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         do { try p.run(); serverProcess = p } catch { /* fall through to load attempt */ }
     }
 
+    // Supervise the bundled server for the app's whole lifetime. If it dies or
+    // was never reachable, respawn it; if the window got stranded on the
+    // load-error page, reload once the server answers again. Without this, a
+    // single server crash left every /api/search failing with connection-refused
+    // (no videos) until the user manually relaunched the app.
+    func startServerMonitor() {
+        let timer = DispatchSource.makeTimerSource(queue: DispatchQueue.global())
+        timer.schedule(deadline: .now() + 3, repeating: 3)
+        timer.setEventHandler { [weak self] in
+            guard let self = self else { return }
+            if self.serverIsUp() {
+                if self.showingErrorPage { DispatchQueue.main.async { self.loadStudio() } }
+            } else {
+                self.spawnServer()   // server died or never came up — bring it back
+            }
+        }
+        timer.resume()
+        serverMonitor = timer
+    }
+
+    // Load the real studio URL (as opposed to the local error page).
+    func loadStudio() {
+        showingErrorPage = false
+        webView.load(URLRequest(url: URL(string: URLSTR)!))
+    }
+
     func findPython(appDir: URL) -> String? {
         var candidates: [String] = []
-        // Prefer a venv (search + Demucs analysis need yt-dlp/torch/etc).
+        // Prefer a system/Homebrew Python for server startup. Search shells out
+        // to yt-dlp; optional pitch analysis still discovers project resources
+        // through source_dir.txt after the server is running.
+        candidates += ["/opt/homebrew/bin/python3", "/usr/local/bin/python3", "/usr/bin/python3"]
         candidates.append(appDir.appendingPathComponent(".venv/bin/python").path)
         if let src = try? String(contentsOf: appDir.appendingPathComponent("source_dir.txt"), encoding: .utf8) {
             let dir = src.trimmingCharacters(in: .whitespacesAndNewlines)
             if !dir.isEmpty { candidates.append(dir + "/.venv/bin/python") }
         }
-        candidates += ["/opt/homebrew/bin/python3", "/usr/local/bin/python3", "/usr/bin/python3"]
         return candidates.first { FileManager.default.isExecutableFile(atPath: $0) }
     }
 
@@ -136,7 +175,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
                 Thread.sleep(forTimeInterval: 0.5)
             }
             DispatchQueue.main.async {
-                self.webView.load(URLRequest(url: URL(string: URLSTR)!))
+                self.loadStudio()
             }
         }
     }
@@ -149,6 +188,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, WKUIDelegate, WKNaviga
         <p style="color:#8a7e6d">Make sure python3 and yt-dlp are installed, then reopen the app.</p></div>
         </body></html>
         """
+        showingErrorPage = true   // monitor reloads the studio once the server answers
         webView.loadHTMLString(html, baseURL: nil)
     }
 

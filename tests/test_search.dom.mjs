@@ -3,6 +3,11 @@ import { JSDOM } from "jsdom";
 
 const dom = new JSDOM(`<!doctype html><html><body>
   <input id="songSearch"><button id="searchBtn"></button><p id="searchStatus"></p>
+  <button id="changeSongInSession"></button>
+  <div id="singSongPicker" class="hidden">
+    <input id="singSongSearch"><button id="singSongSearchBtn"></button><button id="singSongPickerClose"></button>
+    <p id="singSongSearchStatus"></p>
+  </div>
   <div class="field"><input id="songTitle"></div>
   <div class="field"><input id="originalUrl"></div>
   <div class="field"><input id="instrumentalUrl"></div>
@@ -17,11 +22,16 @@ const { initSearch } = await import("../web/js/features/search.js");
 let pass = 0, fail = 0;
 const ok = (n, c) => { console.log((c ? "  ✓ " : "  ✗ ") + n); c ? pass++ : fail++; };
 
-let manualOpened = null, saved = null;
+let manualOpened = null, saved = null, librarySaves = 0, clearedRecentSelection = 0;
+const dispatched = [];
 const ctx = {
   setManualOpen: (v) => { manualOpened = v; },
   saveSetup: (opts) => { saved = opts; },
+  saveSetupToLibrary: () => { librarySaves++; saved = { library: true }; },
+  clearRecentSongSelection: () => { clearedRecentSelection++; },
+  showToast: () => {},
 };
+const store = { dispatch: (action) => dispatched.push(action) };
 
 globalThis.fetch = async () => ({
   ok: true,
@@ -35,7 +45,7 @@ globalThis.fetch = async () => ({
   }),
 });
 
-initSearch(null, ctx);
+initSearch(store, ctx);
 
 document.getElementById("songSearch").value = "test song";
 document.getElementById("searchBtn").click();
@@ -47,6 +57,18 @@ ok("synced lyrics stored", document.getElementById("syncedLyricsData").value.inc
 ok("status mentions missing instrumental", document.getElementById("searchStatus").textContent.includes("instrumental"));
 ok("manual section revealed", manualOpened === true);
 ok("setup saved silently", saved && saved.silent === true);
+ok("successful search clears highlighted recent song", clearedRecentSelection === 1);
+
+document.getElementById("changeSongInSession").click();
+ok("sing change song opens inline picker", !document.getElementById("singSongPicker").classList.contains("hidden"));
+document.getElementById("singSongSearch").value = "next song";
+document.getElementById("singSongSearchBtn").click();
+await new Promise((r) => setTimeout(r, 0));
+
+ok("sing inline search fills title", document.getElementById("songTitle").value === "Test Artist – Test Song");
+ok("sing inline search saves to library", librarySaves === 1);
+ok("sing inline search switches to original tab", dispatched.some((action) => action.type === "setActiveTab" && action.payload === "original"));
+ok("sing inline search closes picker", document.getElementById("singSongPicker").classList.contains("hidden"));
 
 console.log(`\n${fail === 0 ? "ALL PASS" : "FAIL"}: ${pass} passed, ${fail} failed`);
 process.exit(fail === 0 ? 0 : 1);
